@@ -5,6 +5,7 @@ import {
   type AdminMedicalCenterListItem,
   type MedicalCenterVerificationStatus,
 } from "../../services/admin-medical-centers.service";
+import TableSkeleton from "../../components/ui/TableSkeleton";
 
 const verificationOptions: Array<{ key: "all" | MedicalCenterVerificationStatus; label: string }> = [
   { key: "all", label: "All verification" },
@@ -23,6 +24,7 @@ const verificationBadgeClass: Record<MedicalCenterVerificationStatus, string> = 
   pending: "border-yellow-200 bg-yellow-50 text-yellow-800",
   approved: "border-green-200 bg-green-50 text-green-800",
   rejected: "border-red-200 bg-red-50 text-red-800",
+  suspended: "bg-slate-100 text-slate-700",
 };
 
 function StatusBadge({
@@ -196,8 +198,8 @@ export default function MedicalCentersListPage() {
         </div>
 
         {loading ? (
-          <div className="mt-6 rounded-2xl border border-dashed border-[#B7E6FA] bg-[#F8FCFE] px-5 py-10 text-sm text-slate-500">
-            Loading medical centers...
+          <div className="mt-6">
+            <TableSkeleton rows={8} columns={9} />
           </div>
         ) : error ? (
           <div className="mt-6 rounded-2xl border border-red-100 bg-red-50 px-5 py-4 text-sm text-red-700">
@@ -253,10 +255,10 @@ export default function MedicalCentersListPage() {
                     <td className="px-4 py-4 text-sm text-slate-700">{formatDate(item.created_at)}</td>
                     <td className="px-4 py-4 text-right">
                       <Link
-                        to={`/admin/clinics/${item.id}`}
-                        className="inline-flex rounded-full bg-[#053F56] px-4 py-2 text-sm font-semibold text-white transition hover:bg-[#0D5E80]"
+                        to={`/admin/verifications/clinic/${item.id}`}
+                        className="inline-flex rounded-full bg-[#053F56] px-4 py-2 text-sm font-semibold !text-white no-underline transition hover:bg-[#0D5E80] hover:!text-white visited:!text-white"
                       >
-                        Inspect
+                        Review
                       </Link>
                     </td>
                   </tr>

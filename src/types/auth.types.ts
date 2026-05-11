@@ -5,6 +5,9 @@ export type AuthUser = {
   name: string;
   email?: string;
   role: UserRole;
+  status?: "pending" | "approved" | "rejected" | "suspended" | null;
+  verificationStatus?: "pending" | "approved" | "rejected" | "suspended" | null;
+  verificationNotes?: string | null;
 };
 
 export type LoginCredentials = {
@@ -36,6 +39,10 @@ export type LoginResponse = {
   name?: string;
   email?: string;
   user?: Record<string, unknown>;
+};
+
+export type SetPasswordResponse = LoginResponse & {
+  message?: string;
 };
 
 export type TokenPayload = Record<string, unknown> & {

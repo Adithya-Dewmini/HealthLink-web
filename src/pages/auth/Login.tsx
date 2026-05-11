@@ -9,6 +9,8 @@ type LocationState = {
   from?: {
     pathname?: string;
   };
+  initialEmail?: string;
+  flashMessage?: string;
 };
 
 export default function LoginPage() {
@@ -18,6 +20,13 @@ export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const state = location.state as LocationState | null;
+
+  useEffect(() => {
+    if (state?.initialEmail) {
+      setEmail(state.initialEmail);
+    }
+  }, [state?.initialEmail]);
 
   if (!isInitializing && isAuthenticated && user) {
     return <Navigate to={getDefaultRouteForRole(user.role)} replace />;
@@ -45,7 +54,6 @@ export default function LoginPage() {
         password,
       });
 
-      const state = location.state as LocationState | null;
       const intendedPath = state?.from?.pathname;
       const basePath = getBaseRouteForRole(sessionUser.role);
       const redirectPath =
@@ -111,6 +119,12 @@ export default function LoginPage() {
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-6">
+              {state?.flashMessage ? (
+                <div className="rounded-xl bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
+                  {state.flashMessage}
+                </div>
+              ) : null}
+
               <Input
                 id="email"
                 type="email"

@@ -1,28 +1,18 @@
-import { useEffect, useState, type FormEvent } from "react";
+import { useState, type FormEvent } from "react";
+import { useNavigate } from "react-router-dom";
 import Button from "../../components/ui/Button";
 import { setPasswordRequest, validateResetTokenRequest } from "../../services/auth.service";
-import { MOBILE_LOGIN_LINK } from "../../utils/constants";
+import { useAuth } from "../../hooks/useAuth";
 import { useTokenValidation } from "./useTokenValidation";
 
 export default function SetPasswordPage() {
+  const navigate = useNavigate();
+  const { logout } = useAuth();
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  const [submitError, setSubmitError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isSuccess, setIsSuccess] = useState(false);
+  const [submitError, setSubmitError] = useState("");
   const tokenState = useTokenValidation(validateResetTokenRequest);
-
-  useEffect(() => {
-    if (!isSuccess) {
-      return;
-    }
-
-    const timer = window.setTimeout(() => {
-      window.location.href = MOBILE_LOGIN_LINK;
-    }, 1600);
-
-    return () => window.clearTimeout(timer);
-  }, [isSuccess]);
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -33,7 +23,7 @@ export default function SetPasswordPage() {
     }
 
     if (!tokenState.isValid) {
-      setSubmitError(tokenState.error || "Invalid setup link.");
+      setSubmitError(tokenState.error || "Invalid or expired setup link.");
       return;
     }
 
@@ -51,14 +41,21 @@ export default function SetPasswordPage() {
     setSubmitError("");
 
     try {
-      await setPasswordRequest({
+      const result = await setPasswordRequest({
         password,
         token: tokenState.token,
       });
-      setIsSuccess(true);
+      logout();
+      navigate("/login", {
+        replace: true,
+        state: {
+          initialEmail: "",
+          flashMessage: result.message || "Password set successfully. Please log in.",
+        },
+      });
     } catch (caughtError) {
       setSubmitError(
-        caughtError instanceof Error ? caughtError.message : "Unable to set your password."
+        caughtError instanceof Error ? caughtError.message : "Unable to complete password setup."
       );
     } finally {
       setIsSubmitting(false);
@@ -70,19 +67,14 @@ export default function SetPasswordPage() {
       <section className="form-card">
         <div className="section-badge">HealthLink</div>
         <h1 className="section-title">Set your password</h1>
-        <p className="section-copy">Complete account setup to access your workspace.</p>
+        <p className="section-copy">Create a password to activate your HealthLink account.</p>
 
         {tokenState.error ? <div className="message message-error">{tokenState.error}</div> : null}
-        {tokenState.status === "validating" ? (
-          <div className="message">Validating your invite link...</div>
+        {tokenState.isValidating ? (
+          <div className="message">Validating your setup link...</div>
         ) : null}
 
-        {isSuccess ? (
-          <div className="message message-success">
-            <strong>Password set successfully.</strong>
-            <span>Redirecting you to the HealthLink app.</span>
-          </div>
-        ) : tokenState.isValid ? (
+        {tokenState.isValid ? (
           <form className="form-stack" onSubmit={handleSubmit}>
             <label className="field-group">
               <span className="field-label">New password</span>

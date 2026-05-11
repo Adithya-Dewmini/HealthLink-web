@@ -1,177 +1,181 @@
-export type MedicalCenterVerificationStatus = "pending" | "approved" | "rejected";
+export type MedicalCenterVerificationStatus =
+  | "pending"
+  | "approved"
+  | "rejected"
+  | "suspended";
+
+export type AdminMedicalCenterSpecialty = {
+  id: number | string;
+  name: string;
+};
+
+export type AdminMedicalCenterProfile = {
+  id: number | string;
+  name: string;
+  email?: string | null;
+  phone?: string | null;
+  location?: string | null;
+  address?: string | null;
+  city?: string | null;
+  district?: string | null;
+  is_active: boolean;
+  verification_status: MedicalCenterVerificationStatus;
+  verification_notes?: string | null;
+  verified_at?: string | null;
+  created_at: string;
+  specialties: AdminMedicalCenterSpecialty[];
+};
 
 export type AdminMedicalCenterListItem = {
-  id: string;
+  id: number | string;
   name: string;
   location: string;
-  verification_status: MedicalCenterVerificationStatus;
+  email?: string | null;
+  phone?: string | null;
   is_active: boolean;
-  created_at: string;
+  verification_status: MedicalCenterVerificationStatus;
   active_doctors_count: number;
   receptionists_count: number;
   live_queues_count: number;
   today_bookings_count: number;
-};
-
-export type AdminMedicalCenterSpecialty = {
-  id: string;
-  name: string;
-  clinic_id: string;
   created_at: string;
 };
 
 export type AdminMedicalCenterAdmin = {
-  id: number;
+  id: number | string;
   name: string;
   email: string;
-  created_at: string;
-};
-
-export type AdminMedicalCenterDoctorAssignment = {
-  id: string;
-  doctor_id: number | null;
-  doctor_profile_id: number | null;
-  invite_id: string | null;
-  name: string | null;
-  email: string;
-  profile_image: string | null;
-  doctor_specialty: string | null;
-  clinic_specialty_id: string | null;
-  clinic_specialty: string | null;
-  status: string;
-  is_pinned: boolean;
-  is_hidden: boolean;
-  joined_at: string;
+  phone?: string | null;
+  role?: string | null;
+  created_at?: string | null;
 };
 
 export type AdminMedicalCenterDoctor = {
-  relationship_id: string;
-  doctor_user_id: number;
-  doctor_profile_id: number | null;
+  id: number | string;
   name: string;
-  email: string;
-  specialization: string | null;
-  clinic_specialty: string | null;
-  relationship_status: string;
-  verification_status: MedicalCenterVerificationStatus;
-  joined_at: string;
+  email?: string | null;
+  phone?: string | null;
+  specialization?: string | null;
+  status?: string | null;
+  doctor_specialty?: string | null;
+  clinic_specialty?: string | null;
 };
+
+export type AdminMedicalCenterDoctorAssignment = AdminMedicalCenterDoctor;
 
 export type AdminMedicalCenterJoinRequest = {
-  id: string;
-  doctor_id: number;
-  name: string;
-  email: string;
-  specialization: string | null;
-  status: string;
-  created_at: string;
-};
-
-export type AdminMedicalCenterReceptionist = {
-  id: number;
-  user_id: number;
-  name: string;
-  email: string;
-  phone: string | null;
-  is_password_set: boolean;
-  status: string;
-  created_at: string;
-  permissions: {
-    can_manage_queue: boolean;
-    can_manage_appointments: boolean;
-    can_check_in: boolean;
-  };
+  id: number | string;
+  name?: string | null;
+  email?: string | null;
+  doctor_name?: string | null;
+  specialization?: string | null;
+  status?: string | null;
+  requested_at?: string | null;
+  created_at?: string | null;
 };
 
 export type AdminMedicalCenterSchedule = {
-  id: number;
-  doctor_id: number;
-  doctor_name: string;
-  doctor_email: string;
-  specialization: string | null;
-  date: string;
-  start_time: string;
-  end_time: string;
-  slot_duration: number;
-  max_patients: number;
-  is_active: boolean;
-  invalid_reason: string | null;
-  invalidated_at: string | null;
-  status: string;
-  clinic_name?: string | null;
-  clinic_type?: string | null;
+  id: number | string;
+  doctor_name?: string | null;
+  date?: string | null;
+  day_of_week?: string | number | null;
+  start_time?: string | null;
+  end_time?: string | null;
+  status?: string | null;
+  is_active?: boolean;
+  specialization?: string | null;
+  slot_duration?: number | null;
+  max_patients?: number | null;
+  invalid_reason?: string | null;
+};
+
+export type AdminMedicalCenterReceptionist = {
+  id: number | string;
+  name: string;
+  email?: string | null;
+  phone?: string | null;
+  status?: string | null;
+  permissions?: {
+    can_manage_queue?: boolean;
+    can_manage_appointments?: boolean;
+    can_check_in?: boolean;
+  };
 };
 
 export type AdminMedicalCenterQueue = {
-  id: number;
-  doctor_id: number;
-  status: string;
-  started_at: string | null;
-  created_at: string;
-  shift_id: number | null;
-  shift_date: string | null;
-  medical_center_id: string;
-  schedule_id: number | null;
+  id: number | string;
+  doctor_name?: string | null;
+  doctor_id?: number | string | null;
+  current_token?: number | string | null;
+  waiting_count?: number;
+  status?: string | null;
+  started_at?: string | null;
+  schedule_id?: number | string | null;
+  shift_date?: string | null;
+  created_at?: string | null;
 };
 
 export type AdminMedicalCenterAppointments = {
   stats: {
     total: number;
+    upcoming: number;
     completed: number;
     missed: number;
-    upcoming: number;
   };
   appointments: Array<{
-    id: number;
-    doctorId: number;
-    patientName: string;
-    doctorName: string;
-    time: string;
-    status: string;
-    date: string;
+    id: number | string;
+    patientName?: string | null;
+    patient_name?: string | null;
+    doctorName?: string | null;
+    doctor_name?: string | null;
+    appointment_date?: string | null;
+    appointment_time?: string | null;
+    time?: string | null;
+    status?: string | null;
   }>;
 };
 
 export type AdminMedicalCenterPrescription = {
-  id: string;
-  issued_at: string | null;
-  dispensed_at: string | null;
-  patient_name: string;
-  doctor_name: string;
+  id: number | string;
+  patient_name?: string | null;
+  doctor_name?: string | null;
+  status?: string | null;
+  issued_at?: string | null;
 };
 
 export type AdminMedicalCenterActivity = {
+  prescriptions_generated_count: number;
   bookings_count_today: number;
   active_queues_count: number;
-  prescriptions_generated_count: number;
   recent_prescriptions: AdminMedicalCenterPrescription[];
-  booking_trend: Array<{ date: string; count: number }>;
-  prescription_trend: Array<{ date: string; count: number }>;
 };
 
 export type AdminMedicalCenterDetails = {
-  profile: {
-    id: string;
-    name: string;
-    location: string;
-    phone: string | null;
-    email: string | null;
-    created_at: string;
-    verification_status: MedicalCenterVerificationStatus;
-    verified_at: string | null;
-    verification_notes: string | null;
-    is_active: boolean;
-    specialties: AdminMedicalCenterSpecialty[];
-  };
+  id: number | string;
+  profile: AdminMedicalCenterProfile;
   linked_data: {
     center_admins: AdminMedicalCenterAdmin[];
-    assigned_doctors: AdminMedicalCenterDoctorAssignment[];
+    assigned_doctors: AdminMedicalCenterDoctor[];
     doctor_join_requests: AdminMedicalCenterJoinRequest[];
-    receptionists: AdminMedicalCenterReceptionist[];
     schedules: AdminMedicalCenterSchedule[];
+    receptionists: AdminMedicalCenterReceptionist[];
     queues: AdminMedicalCenterQueue[];
     appointments: AdminMedicalCenterAppointments;
-    prescriptions: AdminMedicalCenterPrescription[];
   };
   activity: AdminMedicalCenterActivity;
+};
+
+export type AdminMedicalCentersResponse = {
+  items: AdminMedicalCenterListItem[];
+  data?: AdminMedicalCenterListItem[];
+  pagination: {
+    total: number;
+    page: number;
+    pageSize: number;
+    totalPages: number;
+  };
+  total?: number;
+  page?: number;
+  pageSize?: number;
+  totalPages?: number;
 };

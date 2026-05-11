@@ -1,57 +1,86 @@
 import { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 
-type TokenStatus = "idle" | "validating" | "valid" | "invalid";
+export type TokenValidationStatus =
+  | "missing"
+  | "validating"
+  | "valid"
+  | "invalid";
 
-type ValidateTokenFn = (token: string) => Promise<void>;
+export type TokenValidationState<T = unknown> = {
+  token: string;
+  status: TokenValidationStatus;
+  data: T | null;
+  error: string | null;
+  isValidating: boolean;
+  isChecking: boolean;
+  isValid: boolean;
+  isInvalid: boolean;
+};
 
-export function useTokenValidation(validateToken: ValidateTokenFn) {
-  const token = useMemo(
-    () => new URLSearchParams(window.location.search).get("token")?.trim() || "",
-    []
+export function useTokenValidation<T = unknown>(
+  validateToken: (token: string) => Promise<T>
+): TokenValidationState<T> {
+  const [searchParams] = useSearchParams();
+
+  const token = useMemo(() => {
+    return searchParams.get("token")?.trim() ?? "";
+  }, [searchParams]);
+
+  const [status, setStatus] = useState<TokenValidationStatus>(
+    token ? "validating" : "missing"
   );
-  const [status, setStatus] = useState<TokenStatus>(token ? "idle" : "invalid");
-  const [error, setError] = useState(token ? "" : "Missing token.");
+  const [data, setData] = useState<T | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!token) {
-      return;
-    }
+    let mounted = true;
 
-    let isActive = true;
-
-    const runValidation = async () => {
-      setStatus("validating");
-      setError("");
+    async function runValidation() {
+      if (!token) {
+        if (!mounted) return;
+        setStatus("missing");
+        setError("Invalid or missing token.");
+        setData(null);
+        return;
+      }
 
       try {
-        await validateToken(token);
+        setStatus("validating");
+        setError(null);
 
-        if (!isActive) {
-          return;
-        }
+        const result = await validateToken(token);
 
+        if (!mounted) return;
+        setData(result);
         setStatus("valid");
       } catch (caughtError) {
-        if (!isActive) {
-          return;
-        }
-
+        if (!mounted) return;
+        setData(null);
         setStatus("invalid");
-        setError(caughtError instanceof Error ? caughtError.message : "Unable to validate link.");
+        setError(
+          caughtError instanceof Error
+            ? caughtError.message
+            : "Token validation failed."
+        );
       }
-    };
+    }
 
     void runValidation();
 
     return () => {
-      isActive = false;
+      mounted = false;
     };
   }, [token, validateToken]);
 
   return {
-    error,
-    isValid: status === "valid",
-    status,
     token,
+    status,
+    data,
+    error,
+    isValidating: status === "validating",
+    isChecking: status === "validating",
+    isValid: status === "valid",
+    isInvalid: status === "invalid" || status === "missing",
   };
 }

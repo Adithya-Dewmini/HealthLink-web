@@ -1,76 +1,92 @@
-export type VerificationStatus = "pending" | "approved" | "rejected";
-export type VerificationEntityType = "clinic" | "doctor" | "pharmacy";
+export type VerificationStatus =
+  | "pending"
+  | "approved"
+  | "rejected"
+  | "suspended";
 
-export type VerificationOwnerSummary = {
-  id: number | null;
-  name: string;
-  email: string | null;
-  role: string | null;
-};
+export type VerificationEntityType =
+  | "clinic"
+  | "doctor"
+  | "pharmacy";
 
 export type VerificationReviewerSummary = {
-  id: number;
-  name: string;
-  email: string | null;
+  id?: number | string | null;
+  name?: string | null;
+  email?: string | null;
+};
+
+export type VerificationLinkedAccount = {
+  id?: number | string | null;
+  name?: string | null;
+  email?: string | null;
+  role?: string | null;
+};
+
+export type VerificationOwnerSummary = VerificationLinkedAccount;
+
+export type VerificationProfileSummary = {
+  entityType: VerificationEntityType;
+  entityId: number | string;
+  entityName: string;
+  status: VerificationStatus;
+  submittedAt?: string | null;
+  verifiedAt?: string | null;
+  verificationNotes?: string | null;
+};
+
+export type VerificationMetadataField = {
+  label: string;
+  value: string | number | boolean | null;
 };
 
 export type VerificationDocument = {
-  id: string;
-  documentType: string;
-  fileUrl: string;
-  uploadedAt: string;
+  id: number | string;
+  name?: string | null;
+  fileUrl?: string | null;
+  file_url?: string | null;
+  documentType?: string | null;
+  uploadedAt?: string | null;
+  uploaded_at?: string | null;
 };
 
 export type VerificationReview = {
-  id: string;
+  id: number | string;
   status: VerificationStatus;
-  note: string | null;
-  reviewedAt: string;
-  reviewedBy: VerificationReviewerSummary | null;
+  note?: string | null;
+  reviewedBy?: VerificationReviewerSummary | null;
+  reviewedAt?: string | null;
+  reviewer?: VerificationReviewerSummary | null;
+  reviewed_at?: string | null;
 };
 
 export type VerificationListItem = {
-  entityId: string;
-  entityName: string;
   entityType: VerificationEntityType;
-  submittedAt: string | null;
+  entityId: number | string;
+  entityName: string;
   status: VerificationStatus;
-  owner: VerificationOwnerSummary | null;
-  assignedReviewer: VerificationReviewerSummary | null;
-  lastAction: VerificationReview | null;
+  submittedAt?: string | null;
+  documentCount?: number;
+  owner?: VerificationOwnerSummary | null;
+  assignedReviewer?: VerificationReviewerSummary | null;
+  lastAction?: VerificationReview | null;
+};
+
+export type VerificationDetail = {
+  profile: VerificationProfileSummary;
+  documents: VerificationDocument[];
+  metadata: VerificationMetadataField[];
+  linkedAccount?: VerificationLinkedAccount | null;
+  currentReviewer?: VerificationReviewerSummary | null;
+  statusHistory: VerificationReview[];
+  reviewHistory: VerificationReview[];
 };
 
 export type VerificationListResponse = {
   items: VerificationListItem[];
   pagination: {
+    total: number;
     page: number;
     pageSize: number;
-    total: number;
     totalPages: number;
   };
-};
-
-export type VerificationMetadataField = {
-  label: string;
-  value: string;
-};
-
-export type VerificationProfileSummary = {
-  entityId: string;
-  entityType: VerificationEntityType;
-  entityName: string;
-  status: VerificationStatus;
-  submittedAt: string | null;
-  verifiedAt: string | null;
-  verificationNotes: string | null;
-};
-
-export type VerificationDetail = {
-  profile: VerificationProfileSummary;
-  linkedAccount: VerificationOwnerSummary | null;
-  metadata: VerificationMetadataField[];
-  documents: VerificationDocument[];
-  reviewHistory: VerificationReview[];
-  statusHistory: VerificationReview[];
-  currentReviewer: VerificationReviewerSummary | null;
 };

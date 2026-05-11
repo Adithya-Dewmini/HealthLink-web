@@ -7,12 +7,14 @@ import {
   type PropsWithChildren,
 } from "react";
 import {
+  AUTH_SESSION_UPDATED_EVENT,
   clearStoredSession,
   login as loginRequest,
   readStoredSession,
   setStoredSession,
   UNAUTHORIZED_EVENT,
 } from "../services/auth.service";
+import { api } from "../services/api";
 import type { AuthContextValue, LoginCredentials, StoredSession } from "../types/auth.types";
 
 export const AuthContext = createContext<AuthContextValue | undefined>(undefined);
@@ -32,8 +34,17 @@ export function AuthProvider({ children }: PropsWithChildren) {
       setLoading(false);
     };
 
+    const handleSessionUpdated = () => {
+      setSession(readStoredSession());
+      setLoading(false);
+    };
+
     window.addEventListener(UNAUTHORIZED_EVENT, handleUnauthorized);
-    return () => window.removeEventListener(UNAUTHORIZED_EVENT, handleUnauthorized);
+    window.addEventListener(AUTH_SESSION_UPDATED_EVENT, handleSessionUpdated);
+    return () => {
+      window.removeEventListener(UNAUTHORIZED_EVENT, handleUnauthorized);
+      window.removeEventListener(AUTH_SESSION_UPDATED_EVENT, handleSessionUpdated);
+    };
   }, []);
 
   const login = useCallback(async (credentials: LoginCredentials) => {
@@ -51,6 +62,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
 
   const logout = useCallback(() => {
     setLoading(true);
+    void api.post("/api/auth/logout").catch(() => null);
     clearStoredSession();
     setSession({ token: null, user: null });
     setLoading(false);

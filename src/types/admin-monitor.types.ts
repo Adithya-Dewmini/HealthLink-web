@@ -1,41 +1,70 @@
-export type AdminMonitorQueueStatus = "active" | "paused" | "ended";
-export type AdminMonitorSessionStatus = "upcoming" | "active" | "completed";
-export type AdminMonitorPrescriptionStatus = "pending" | "dispensed";
+export type AdminMonitorQueueStatus =
+  | "waiting"
+  | "active"
+  | "paused"
+  | "completed"
+  | "cancelled"
+  | "missed";
+
+export type AdminMonitorSessionStatus =
+  | "scheduled"
+  | "active"
+  | "paused"
+  | "completed"
+  | "cancelled";
+
+export type AdminMonitorPrescriptionStatus =
+  | "draft"
+  | "issued"
+  | "dispensed"
+  | "cancelled"
+  | "expired"
+  | "pending";
 
 export type AdminMonitorQueueItem = {
+  session_id?: number | string | null;
   clinic_name: string;
   doctor_name: string;
-  session_id: number | null;
   waiting_count: number;
-  current_token: number | null;
+  current_token?: number | string | null;
   queue_status: AdminMonitorQueueStatus;
-  started_at: string | null;
-};
-
-export type AdminMonitorSessionItem = {
-  session_id: number;
-  doctor_name: string;
-  clinic_name: string;
-  date: string;
-  start_time: string;
-  end_time: string;
-  status: AdminMonitorSessionStatus;
-  booked_patients_count: number;
-  queue_active: boolean;
+  started_at?: string | null;
 };
 
 export type AdminMonitorQueuesResponse = {
   items: AdminMonitorQueueItem[];
-  generated_at: string;
+  generated_at?: string;
+};
+
+export type AdminMonitorSessionItem = {
+  session_id: number | string;
+  doctor_name: string;
+  clinic_name: string;
+  status: AdminMonitorSessionStatus;
+  start_time?: string | null;
+  end_time?: string | null;
+  booked_patients_count: number;
+  queue_active: boolean;
 };
 
 export type AdminMonitorSessionsResponse = {
   items: AdminMonitorSessionItem[];
-  generated_at: string;
+  generated_at?: string;
+};
+
+export type AdminMonitorBookingItem = {
+  id: number | string;
+  patient_name?: string | null;
+  doctor_name?: string | null;
+  clinic_name?: string | null;
+  appointment_time?: string | null;
+  status?: string | null;
 };
 
 export type AdminMonitorBookingsResponse = {
   today_total_bookings: number;
+  pending: number;
+  confirmed: number;
   completed: number;
   missed: number;
   cancelled: number;
@@ -44,16 +73,18 @@ export type AdminMonitorBookingsResponse = {
     hour: string;
     bookings_count: number;
   }>;
+  items?: AdminMonitorBookingItem[];
 };
 
 export type AdminMonitorPrescriptionItem = {
-  id: string;
-  issued_at: string | null;
-  dispensed_at: string | null;
+  id: number | string;
+  patient_name?: string | null;
+  doctor_name?: string | null;
+  clinic_name?: string | null;
+  linked_pharmacy?: string | null;
   status: AdminMonitorPrescriptionStatus;
-  doctor_name: string | null;
-  clinic_name: string | null;
-  linked_pharmacy: string | null;
+  issued_at?: string | null;
+  dispensed_at?: string | null;
 };
 
 export type AdminMonitorPrescriptionsResponse = {
