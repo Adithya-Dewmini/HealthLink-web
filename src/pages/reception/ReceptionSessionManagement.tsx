@@ -24,6 +24,7 @@ import {
   getReceptionQueueBySession,
   getReceptionSessionDoctors,
   getReceptionSessions,
+  getReceptionVisits,
   pauseQueue,
   resumeQueue,
   startQueue,
@@ -35,6 +36,7 @@ import type {
   ReceptionQueuePatient,
   ReceptionSession,
   ReceptionSessionDoctor,
+  ReceptionVisit,
 } from "../../types/reception.types";
 
 type SessionDetailStatus = "not_started" | "live" | "paused" | "completed" | "cancelled";
@@ -220,7 +222,21 @@ function buildSessionDetail(
   };
 }
 
-function buildQueueSummary(detail: ReceptionQueueDetail | null): QueueSummary {
+function isWalkInSource(source: string | null | undefined) {
+  return String(source || "").toLowerCase().includes("walk");
+}
+
+function buildVisitSourceMap(visits: ReceptionVisit[]) {
+  const byPatientId = new Map<number, ReceptionVisit>();
+  visits.forEach((visit) => {
+    if (!byPatientId.has(visit.patientId)) {
+      byPatientId.set(visit.patientId, visit);
+    }
+  });
+  return byPatientId;
+}
+
+function buildQueueSummaryFromPatients(detail: ReceptionQueueDetail | null, patients: PatientPreview[]): QueueSummary {
   return {
     nowServing: detail?.currentPatient
       ? `#${detail.currentPatient.tokenNumber} - ${detail.currentPatient.patientName}`
@@ -232,24 +248,23 @@ function buildQueueSummary(detail: ReceptionQueueDetail | null): QueueSummary {
     checkedInCount: detail?.checkedInPatients.length || 0,
     completedCount: detail?.completedPatients.length || 0,
     missedLateCount: (detail?.missedPatients.length || 0) + (detail?.latePatients.length || 0),
-    // TODO: Replace walk-in fallback when queue detail API returns booked/walk-in patient source.
-    walkInCount: 0,
+    walkInCount: patients.filter((patient) => patient.type === "Walk-in").length,
   };
 }
 
-function toPatientPreview(patient: ReceptionQueuePatient): PatientPreview {
+function toPatientPreview(patient: ReceptionQueuePatient, sourceVisit?: ReceptionVisit): PatientPreview {
+  const isWalkIn = patient.isWalkIn === true || isWalkInSource(sourceVisit?.bookingSource);
   return {
     id: patient.id,
     queueNumber: `#${patient.tokenNumber}`,
     patientName: patient.patientName,
-    appointmentTime: formatClock(patient.bookingTime),
-    // TODO: Replace booked fallback when queue patient API returns source/type.
-    type: "Booked",
+    appointmentTime: formatClock(patient.bookingTime || sourceVisit?.appointmentTime || null),
+    type: isWalkIn ? "Walk-in" : "Booked",
     status: patient.status,
   };
 }
 
-function buildPatientPreview(detail: ReceptionQueueDetail | null) {
+function buildPatientPreview(detail: ReceptionQueueDetail | null, visitSourceMap: Map<number, ReceptionVisit>) {
   if (!detail) return [];
 
   const uniquePatients = new Map<number, ReceptionQueuePatient>();
@@ -266,7 +281,9 @@ function buildPatientPreview(detail: ReceptionQueueDetail | null) {
     .filter((patient): patient is ReceptionQueuePatient => Boolean(patient))
     .forEach((patient) => uniquePatients.set(patient.id, patient));
 
-  return Array.from(uniquePatients.values()).map(toPatientPreview);
+  return Array.from(uniquePatients.values()).map((patient) =>
+    toPatientPreview(patient, visitSourceMap.get(patient.patientId))
+  );
 }
 
 function patientMatchesFilter(patient: PatientPreview, filter: PatientPreviewFilter) {
@@ -432,10 +449,13 @@ export default function ReceptionSessionManagementPage() {
         return;
       }
 
-      const [sessions, doctors, detail] = await Promise.all([
+      const [sessions, doctors, detail, visitsResult] = await Promise.all([
         getReceptionSessions(),
         getReceptionSessionDoctors().catch(() => [] as ReceptionSessionDoctor[]),
         getReceptionQueueBySession(parsedSessionId).catch(() => null),
+        getReceptionVisits({ filter: "today", sessionId: parsedSessionId, limit: 200 }).catch(() => ({
+          visits: [] as ReceptionVisit[],
+        })),
       ]);
       const selectedSession = sessions.find((item) => item.id === parsedSessionId) || null;
 
@@ -447,9 +467,11 @@ export default function ReceptionSessionManagementPage() {
         return;
       }
 
+      const visitSourceMap = buildVisitSourceMap(visitsResult.visits);
+      const patientPreview = buildPatientPreview(detail, visitSourceMap);
       setSession(buildSessionDetail(selectedSession, doctors, detail));
       setQueueDetail(detail);
-      setPatients(buildPatientPreview(detail));
+      setPatients(patientPreview);
       setError("");
     } catch (caughtError) {
       setError(caughtError instanceof Error ? caughtError.message : "Unable to load session details.");
@@ -463,7 +485,7 @@ export default function ReceptionSessionManagementPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sessionId]);
 
-  const queueSummary = useMemo(() => buildQueueSummary(queueDetail), [queueDetail]);
+  const queueSummary = useMemo(() => buildQueueSummaryFromPatients(queueDetail, patients), [patients, queueDetail]);
   const filteredPatients = useMemo(
     () => patients.filter((patient) => patientMatchesFilter(patient, activePatientFilter)),
     [activePatientFilter, patients]

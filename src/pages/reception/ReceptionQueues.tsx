@@ -26,6 +26,7 @@ import {
   getReceptionPermissions,
   getReceptionQueueBySession,
   getReceptionQueues,
+  getReceptionVisits,
   markQueueCurrentPatientCompleted,
   markQueueCurrentPatientMissed,
 } from "../../services/reception.service";
@@ -35,6 +36,7 @@ import type {
   ReceptionQueue,
   ReceptionQueueDetail,
   ReceptionQueuePatient,
+  ReceptionVisit,
 } from "../../types/reception.types";
 
 type QueueTab = "waiting" | "checked_in" | "serving" | "completed" | "missed" | "walkins" | "all";
@@ -203,24 +205,38 @@ function toActiveSession(queue: ReceptionQueue): ActiveSession {
   };
 }
 
-function toQueuePatient(patient: ReceptionQueuePatient): QueuePatient {
+function isWalkInSource(source: string | null | undefined) {
+  return String(source || "").toLowerCase().includes("walk");
+}
+
+function buildVisitSourceMap(visits: ReceptionVisit[]) {
+  const byPatientId = new Map<number, ReceptionVisit>();
+  visits.forEach((visit) => {
+    if (!byPatientId.has(visit.patientId)) {
+      byPatientId.set(visit.patientId, visit);
+    }
+  });
+  return byPatientId;
+}
+
+function toQueuePatient(patient: ReceptionQueuePatient, sourceVisit?: ReceptionVisit): QueuePatient {
+  const isWalkIn = patient.isWalkIn === true || isWalkInSource(sourceVisit?.bookingSource);
   return {
     id: patient.id,
     queueNumber: patient.tokenNumber,
     patientName: patient.patientName,
     patientImageUrl: patient.profileImage ? resolveApiAssetUrl(patient.profileImage) : null,
     phone: patient.phone,
-    appointmentTime: patient.bookingTime,
-    // TODO: Replace booked fallback when queue patient API returns booked/walk-in source.
-    type: "Booked",
+    appointmentTime: patient.bookingTime || sourceVisit?.appointmentTime || null,
+    type: isWalkIn ? "Walk-in" : "Booked",
     status: patient.status,
     waitingMinutes: calculateWaitingMinutes(patient.bookingTime),
-    reason: null,
-    isWalkIn: false,
+    reason: isWalkIn ? "Walk-in arrival" : null,
+    isWalkIn,
   };
 }
 
-function buildPatients(detail: ReceptionQueueDetail | null) {
+function buildPatients(detail: ReceptionQueueDetail | null, visitSourceMap: Map<number, ReceptionVisit>) {
   if (!detail) return [];
 
   const patients = new Map<number, QueuePatient>();
@@ -235,7 +251,7 @@ function buildPatients(detail: ReceptionQueueDetail | null) {
     ...detail.missedPatients,
   ]
     .filter((patient): patient is ReceptionQueuePatient => Boolean(patient))
-    .forEach((patient) => patients.set(patient.id, toQueuePatient(patient)));
+    .forEach((patient) => patients.set(patient.id, toQueuePatient(patient, visitSourceMap.get(patient.patientId))));
 
   return Array.from(patients.values()).sort((a, b) => a.queueNumber - b.queueNumber);
 }
@@ -554,9 +570,15 @@ export default function ReceptionQueuesPage() {
       }
 
       const detail = await getReceptionQueueBySession(selectedQueue.sessionId).catch(() => null);
+      const visits = await getReceptionVisits({
+        filter: "today",
+        sessionId: selectedQueue.sessionId,
+        limit: 200,
+      }).catch(() => ({ visits: [] as ReceptionVisit[] }));
+      const visitSourceMap = buildVisitSourceMap(visits.visits);
       const sessionSource = detail?.queue ? { ...selectedQueue, ...detail.queue } : selectedQueue;
       setActiveSession(toActiveSession(sessionSource));
-      setPatients(buildPatients(detail));
+      setPatients(buildPatients(detail, visitSourceMap));
       setError("");
     } catch (caughtError) {
       setError(caughtError instanceof Error ? caughtError.message : "Unable to load live queue.");

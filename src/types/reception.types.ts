@@ -106,6 +106,7 @@ export type ReceptionQueuePatient = {
   profileImage?: string | null;
   phone: string | null;
   bookingTime: string | null;
+  isWalkIn?: boolean | null;
   startedAt?: string | null;
   completedAt?: string | null;
   missedAt?: string | null;

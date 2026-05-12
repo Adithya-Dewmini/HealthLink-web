@@ -151,6 +151,7 @@ const normalizeQueuePatient = (patient: ReceptionQueuePatient): ReceptionQueuePa
   status: normalizeQueuePatientStatus(patient.status),
   phone: patient.phone ?? null,
   bookingTime: patient.bookingTime ?? null,
+  isWalkIn: patient.isWalkIn ?? false,
 });
 
 const normalizeVisit = (visit: ReceptionVisit): ReceptionVisit => ({

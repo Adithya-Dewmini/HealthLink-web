@@ -104,7 +104,7 @@ const navigationSections: AdminSidebarSection[] = [
     items: [
       { name: "Dashboard", path: "/receptionist/dashboard", icon: iconSet.dashboard },
       { name: "Today Sessions", path: "/receptionist/sessions", icon: iconSet.sessions },
-      { name: "Create Session", path: "/receptionist/create-session", icon: iconSet.createSession },
+      { name: "Doctor Schedule", path: "/receptionist/create-session", icon: iconSet.createSession },
       { name: "Live Queue", path: "/receptionist/live-queue", icon: iconSet.liveQueue },
     ],
   },
@@ -167,8 +167,8 @@ const pageMeta: Record<string, { title: string; subtitle: string }> = {
     subtitle: "Review doctor session readiness and queue coverage across the clinic desk.",
   },
   "/receptionist/create-session": {
-    title: "Create Session",
-    subtitle: "Add a doctor session for the clinic desk with a simpler scheduling workflow.",
+    title: "Doctor Schedule",
+    subtitle: "Set weekly doctor sessions and add extra sessions when needed.",
   },
   "/receptionist/reports": {
     title: "Reports",
