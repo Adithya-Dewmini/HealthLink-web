@@ -13,10 +13,12 @@ import {
 } from "lucide-react";
 import PharmacyWorkspaceSkeleton from "../../components/ui/PharmacyWorkspaceSkeleton";
 import {
+  fetchOrderInvoice,
   fetchPharmacyOrders,
   getAllowedOrderTransitions,
   ORDER_STATUS_LABELS,
   updatePharmacyOrderStatus,
+  type PharmacyInvoiceDetails,
   type PharmacyOrder,
   type PharmacyOrderStatus,
 } from "../../services/pharmacy-operations.service";
@@ -28,6 +30,7 @@ type OrderTypeTab = "all" | "pickup" | "delivery" | "prescription" | "marketplac
 type SidebarStatusView = "all" | "new" | "pending" | "in_progress" | "completed" | "cancelled";
 
 const statusClasses: Record<PharmacyOrderStatus, string> = {
+  pending_payment: "bg-sky-100 text-sky-800 border border-sky-200",
   pending: "bg-amber-100 text-amber-800 border border-amber-200",
   confirmed: "bg-sky-100 text-sky-800 border border-sky-200",
   preparing: "bg-violet-100 text-violet-800 border border-violet-200",
@@ -38,6 +41,7 @@ const statusClasses: Record<PharmacyOrderStatus, string> = {
   delivered: "bg-cyan-100 text-cyan-800 border border-cyan-200",
   completed: "bg-emerald-100 text-emerald-800 border border-emerald-200",
   cancelled: "bg-rose-100 text-rose-800 border border-rose-200",
+  rejected: "bg-rose-100 text-rose-800 border border-rose-200",
 };
 
 const statusTabConfig: Array<{ key: OrderStatusTab; label: string }> = [
@@ -66,17 +70,17 @@ const isSidebarStatusView = (value: string | null): value is SidebarStatusView =
 
 function matchesSidebarView(order: PharmacyOrder, view: SidebarStatusView) {
   if (view === "all") return true;
-  if (view === "new") return order.status === "pending";
-  if (view === "pending") return ["pending", "confirmed", "awaiting_substitution_approval"].includes(order.status);
+  if (view === "new") return order.status === "pending_payment" || order.status === "pending";
+  if (view === "pending") return ["pending_payment", "pending", "confirmed", "awaiting_substitution_approval"].includes(order.status);
   if (view === "in_progress") return ["preparing", "partially_ready", "out_for_delivery"].includes(order.status);
   if (view === "completed") return ["completed", "delivered"].includes(order.status);
-  return order.status === "cancelled";
+  return order.status === "cancelled" || order.status === "rejected";
 }
 
 function matchesStatusTab(order: PharmacyOrder, tab: OrderStatusTab) {
   if (tab === "all") return true;
   if (tab === "active") {
-    return ["pending", "awaiting_substitution_approval", "confirmed", "preparing", "partially_ready"].includes(
+    return ["pending_payment", "pending", "awaiting_substitution_approval", "confirmed", "preparing", "partially_ready"].includes(
       order.status
     );
   }
@@ -86,7 +90,7 @@ function matchesStatusTab(order: PharmacyOrder, tab: OrderStatusTab) {
   if (tab === "completed") {
     return ["completed", "delivered"].includes(order.status);
   }
-  return order.status === "cancelled";
+  return order.status === "cancelled" || order.status === "rejected";
 }
 
 function matchesTypeTab(order: PharmacyOrder, tab: OrderTypeTab) {
@@ -165,11 +169,19 @@ function FilterChip({
 function OrderActionModal({
   order,
   busy,
+  invoice,
+  invoiceLoading,
+  invoiceError,
+  onLoadInvoice,
   onClose,
   onStatusChange,
 }: {
   order: PharmacyOrder | null;
   busy: boolean;
+  invoice: PharmacyInvoiceDetails | null;
+  invoiceLoading: boolean;
+  invoiceError: string;
+  onLoadInvoice: (orderId: number) => void;
   onClose: () => void;
   onStatusChange: (status: PharmacyOrderStatus) => void;
 }) {
@@ -262,6 +274,8 @@ function OrderActionModal({
               <div className="mt-4 space-y-3 text-sm text-slate-600">
                 <div>Type: {order.fulfillmentType === "delivery" ? "Delivery" : "Pickup"}</div>
                 <div>Source: {order.prescriptionId ? "Prescription order" : "Marketplace order"}</div>
+                <div>Payment method: {order.paymentMethod === "online" ? "Online payment" : "Cash / Pay at pharmacy"}</div>
+                <div>Payment status: {order.paymentStatus ? order.paymentStatus.replace(/_/g, " ") : "pending"}</div>
                 {order.prescriptionId ? <div>Prescription ID: {order.prescriptionId}</div> : null}
                 {order.notes ? <div>Note: {order.notes}</div> : null}
                 {order.deliveryContactName ? <div>Contact: {order.deliveryContactName}</div> : null}
@@ -283,6 +297,71 @@ function OrderActionModal({
             </section>
 
             <section className="rounded-[22px] border border-slate-200 bg-white p-5">
+              <div className="mb-4 flex items-center justify-between gap-4">
+                <div>
+                  <div className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Invoice</div>
+                  <div className="mt-2 text-base font-semibold text-slate-900">
+                    {order.invoice?.invoiceNo || "No invoice generated yet"}
+                  </div>
+                </div>
+                {order.invoice ? (
+                  <button
+                    type="button"
+                    onClick={() => onLoadInvoice(order.id)}
+                    className="inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm font-semibold text-emerald-800 transition hover:bg-emerald-100"
+                  >
+                    <RefreshCw size={14} />
+                    Refresh invoice
+                  </button>
+                ) : null}
+              </div>
+
+              {!order.invoice ? (
+                <div className="text-sm text-slate-500">An invoice will appear here after successful payment confirmation.</div>
+              ) : invoiceLoading ? (
+                <div className="text-sm text-slate-500">Loading invoice summary...</div>
+              ) : invoiceError ? (
+                <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+                  {invoiceError}
+                </div>
+              ) : invoice ? (
+                <div className="space-y-4">
+                  <div className="grid gap-3 sm:grid-cols-3">
+                    <div className="rounded-[18px] bg-slate-50 p-4">
+                      <div className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Invoice no.</div>
+                      <div className="mt-2 font-semibold text-slate-900">{invoice.invoice.invoiceNo}</div>
+                    </div>
+                    <div className="rounded-[18px] bg-slate-50 p-4">
+                      <div className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Payment</div>
+                      <div className="mt-2 font-semibold text-slate-900">
+                        {invoice.order.paymentMethod === "online" ? "Online" : "Cash"}
+                      </div>
+                      <div className="mt-1 text-sm text-slate-500">
+                        {invoice.order.paymentStatus ? invoice.order.paymentStatus.replace(/_/g, " ") : "pending"}
+                      </div>
+                    </div>
+                    <div className="rounded-[18px] bg-slate-50 p-4">
+                      <div className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Total</div>
+                      <div className="mt-2 text-2xl font-semibold text-slate-900">
+                        {formatMoney(invoice.invoice.total)}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="rounded-[18px] border border-slate-100 bg-slate-50 p-4 text-sm text-slate-600">
+                    <div>Patient: {invoice.patient.name || "Patient"}</div>
+                    <div className="mt-1">Pharmacy: {invoice.pharmacy.name}</div>
+                    <div className="mt-1">
+                      Items: {invoice.items.map((item) => `${item.quantity} x ${item.name}`).join(", ")}
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="text-sm text-slate-500">Invoice summary not loaded yet.</div>
+              )}
+            </section>
+
+            <section className="rounded-[22px] border border-slate-200 bg-white p-5">
               <div className="mb-4 flex items-center justify-between">
                 <span className="text-base font-semibold text-slate-900">Take action</span>
                 {allowedTransitions[0] ? (
@@ -291,8 +370,17 @@ function OrderActionModal({
                   </span>
                 ) : null}
               </div>
+              {order.paymentMethod === "online" && order.paymentStatus !== "paid" ? (
+                <div className="mb-4 rounded-[18px] border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+                  This order is waiting for verified online payment. Pharmacist status updates stay locked until payment is marked paid.
+                </div>
+              ) : null}
               <div className="flex flex-wrap gap-2">
-                {allowedTransitions.length === 0 ? (
+                {order.paymentMethod === "online" && order.paymentStatus !== "paid" ? (
+                  <span className="rounded-full bg-slate-100 px-4 py-2 text-sm font-semibold text-slate-500">
+                    Awaiting payment confirmation
+                  </span>
+                ) : allowedTransitions.length === 0 ? (
                   <span className="rounded-full bg-slate-100 px-4 py-2 text-sm font-semibold text-slate-500">
                     No more status updates
                   </span>
@@ -369,6 +457,26 @@ function OrderTableRow({
         <StatusBadge status={order.status} />
       </td>
       <td className="px-4 py-4 align-top">
+        <div className="space-y-1">
+          <span
+            className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${
+              order.paymentMethod === "online"
+                ? order.paymentStatus === "paid"
+                  ? "bg-emerald-100 text-emerald-800"
+                  : "bg-amber-100 text-amber-800"
+                : "bg-slate-100 text-slate-700"
+            }`}
+          >
+            {order.paymentMethod === "online"
+              ? order.paymentStatus === "paid"
+                ? "Paid online"
+                : "Awaiting payment"
+              : "Cash"}
+          </span>
+          {order.invoice?.invoiceNo ? <div className="text-xs text-slate-500">{order.invoice.invoiceNo}</div> : null}
+        </div>
+      </td>
+      <td className="px-4 py-4 align-top">
         <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700">
           {order.fulfillmentType === "delivery" ? "Delivery" : "Pickup"}
         </span>
@@ -406,6 +514,9 @@ export default function OrdersPage() {
   const [error, setError] = useState("");
   const [busyOrderId, setBusyOrderId] = useState<number | null>(null);
   const [selectedOrder, setSelectedOrder] = useState<PharmacyOrder | null>(null);
+  const [selectedInvoice, setSelectedInvoice] = useState<PharmacyInvoiceDetails | null>(null);
+  const [invoiceLoading, setInvoiceLoading] = useState(false);
+  const [invoiceError, setInvoiceError] = useState("");
   const [search, setSearch] = useState("");
   const [activeStatusTab, setActiveStatusTab] = useState<OrderStatusTab>("all");
   const [activeTypeTab, setActiveTypeTab] = useState<OrderTypeTab>("all");
@@ -518,6 +629,30 @@ export default function OrdersPage() {
     }
   };
 
+  const loadSelectedInvoice = useCallback(async (orderId: number) => {
+    try {
+      setInvoiceLoading(true);
+      setInvoiceError("");
+      const invoice = await fetchOrderInvoice(orderId);
+      setSelectedInvoice(invoice);
+    } catch (caughtError) {
+      setSelectedInvoice(null);
+      setInvoiceError(caughtError instanceof Error ? caughtError.message : "Unable to load invoice.");
+    } finally {
+      setInvoiceLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!selectedOrder?.invoice?.id) {
+      setSelectedInvoice(null);
+      setInvoiceError("");
+      setInvoiceLoading(false);
+      return;
+    }
+    void loadSelectedInvoice(selectedOrder.id);
+  }, [loadSelectedInvoice, selectedOrder]);
+
   if (loading) {
     return (
       <PharmacyWorkspaceSkeleton
@@ -626,6 +761,7 @@ export default function OrdersPage() {
                     <th className="px-4 py-4">Date</th>
                     <th className="px-4 py-4">Total</th>
                     <th className="px-4 py-4">Status</th>
+                    <th className="px-4 py-4">Payment</th>
                     <th className="px-4 py-4">Fulfillment</th>
                     <th className="px-4 py-4 text-right">Action</th>
                   </tr>
@@ -633,7 +769,7 @@ export default function OrdersPage() {
                 <tbody className="bg-white">
                   {filteredOrders.length === 0 ? (
                     <tr>
-                      <td colSpan={10} className="px-6 py-16 text-center text-slate-500">
+                      <td colSpan={11} className="px-6 py-16 text-center text-slate-500">
                         {search
                           ? "No orders matched your filters."
                           : "No orders are available in this section yet."}
@@ -645,7 +781,11 @@ export default function OrdersPage() {
                         key={order.id}
                         order={order}
                         busy={busyOrderId === order.id}
-                        onOpen={() => setSelectedOrder(order)}
+                        onOpen={() => {
+                          setSelectedOrder(order);
+                          setSelectedInvoice(null);
+                          setInvoiceError("");
+                        }}
                         onStatusChange={(status) => void handleStatusChange(order.id, status)}
                       />
                     ))
@@ -673,7 +813,15 @@ export default function OrdersPage() {
       <OrderActionModal
         order={selectedOrder}
         busy={busyOrderId === selectedOrder?.id}
-        onClose={() => setSelectedOrder(null)}
+        invoice={selectedInvoice}
+        invoiceLoading={invoiceLoading}
+        invoiceError={invoiceError}
+        onLoadInvoice={(orderId) => void loadSelectedInvoice(orderId)}
+        onClose={() => {
+          setSelectedOrder(null);
+          setSelectedInvoice(null);
+          setInvoiceError("");
+        }}
         onStatusChange={(status) => {
           if (!selectedOrder) return;
           void handleStatusChange(selectedOrder.id, status);

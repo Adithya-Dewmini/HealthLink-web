@@ -27,6 +27,8 @@ const roleMap: Record<string, UserRole> = {
 };
 
 export const AUTH_SESSION_UPDATED_EVENT = "auth:session-updated";
+const DOCTOR_WEB_ACCESS_MESSAGE =
+  "Doctor access is available through the HealthLink mobile app only.";
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
@@ -219,6 +221,10 @@ export async function login(credentials: LoginCredentials): Promise<StoredSessio
       throw new Error("Login response did not include a valid user role.");
     }
 
+    if (user.role === "doctor") {
+      throw new Error(DOCTOR_WEB_ACCESS_MESSAGE);
+    }
+
     if (isTokenExpired(token)) {
       throw new Error("Your session has already expired. Please sign in again.");
     }
@@ -255,8 +261,6 @@ export function getDefaultRouteForRole(role: UserRole) {
       return "/center/dashboard";
     case "pharmacist":
       return "/pharmacy/dashboard";
-    case "doctor":
-      return "/doctor/dashboard";
     case "receptionist":
       return "/receptionist/dashboard";
     default:
@@ -280,8 +284,6 @@ export function getBaseRouteForRole(role: UserRole) {
       return "/center";
     case "pharmacist":
       return "/pharmacy";
-    case "doctor":
-      return "/doctor";
     case "receptionist":
       return "/receptionist";
     default:
@@ -299,6 +301,11 @@ export function readStoredSession(): StoredSession {
     const user = readStoredUser(token);
 
     if (!token || !user) {
+      clearStoredSession(false);
+      return { token: null, user: null };
+    }
+
+    if (user.role === "doctor") {
       clearStoredSession(false);
       return { token: null, user: null };
     }

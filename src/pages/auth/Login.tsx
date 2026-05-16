@@ -5,6 +5,9 @@ import Input from "../../components/ui/Input";
 import { useAuth } from "../../hooks/useAuth";
 import { getBaseRouteForRole, getDefaultRouteForRole } from "../../services/auth.service";
 
+const DOCTOR_WEB_ACCESS_MESSAGE =
+  "Doctor access is available through the HealthLink mobile app only.";
+
 type LocationState = {
   from?: {
     pathname?: string;
@@ -54,6 +57,11 @@ export default function LoginPage() {
         password,
       });
 
+      if (sessionUser.role === "doctor") {
+        setError(DOCTOR_WEB_ACCESS_MESSAGE);
+        return;
+      }
+
       const intendedPath = state?.from?.pathname;
       const basePath = getBaseRouteForRole(sessionUser.role);
       const redirectPath =
@@ -96,7 +104,7 @@ export default function LoginPage() {
             <div className="rounded-xl border border-white/10 bg-white/5 p-6 backdrop-blur-sm transition-colors hover:bg-white/10">
               <h3 className="mb-1 text-lg font-semibold text-white">Invited workspaces</h3>
               <p className="text-sm text-blue-100/70">
-                Center staff, doctors, pharmacists, and receptionists use invited account access.
+                Center staff, pharmacists, and receptionists use invited account access.
               </p>
             </div>
           </div>

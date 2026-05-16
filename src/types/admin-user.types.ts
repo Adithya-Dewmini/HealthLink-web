@@ -34,6 +34,7 @@ export type AdminUserListResponse = {
 };
 
 export type AdminUserDetails = {
+  data_mode?: "full" | "fallback";
   identity: {
     id: string;
     name: string;

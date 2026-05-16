@@ -151,6 +151,7 @@ export type AdminMedicalCenterActivity = {
 };
 
 export type AdminMedicalCenterDetails = {
+  data_mode?: "full" | "fallback";
   id: number | string;
   profile: AdminMedicalCenterProfile;
   linked_data: {

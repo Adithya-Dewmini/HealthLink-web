@@ -29,6 +29,7 @@ const verificationBadgeClass = {
   pending: "border-yellow-200 bg-yellow-50 text-yellow-800",
   approved: "border-green-200 bg-green-50 text-green-800",
   rejected: "border-red-200 bg-red-50 text-red-800",
+  suspended: "bg-slate-100 text-slate-700",
 } as const;
 
 function Badge({ label, className }: { label: string; className: string }) {
@@ -127,6 +128,8 @@ export default function DoctorDetailsPage() {
       activeSchedules: detail.activity_summary.active_schedules,
     };
   }, [associations, detail]);
+
+  const isFallbackDetail = detail?.data_mode === "fallback";
 
   const refreshDetail = async () => {
     if (!id) {
@@ -244,6 +247,12 @@ export default function DoctorDetailsPage() {
           Back to doctors
         </Link>
         <div className="flex flex-wrap gap-2">
+          <Link
+            to={`/admin/verifications/doctor/${detail.profile.id}`}
+            className="rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+          >
+            Open verification review
+          </Link>
           <button
             type="button"
             disabled={busyAction === "approve"}
@@ -262,7 +271,7 @@ export default function DoctorDetailsPage() {
           </button>
           <button
             type="button"
-            disabled={busyAction === "visibility"}
+            disabled={busyAction === "visibility" || isFallbackDetail}
             onClick={() => void toggleVisibility()}
             className="rounded-full border border-cyan-200 bg-cyan-50 px-4 py-2 text-sm font-semibold text-cyan-800 transition hover:bg-cyan-100 disabled:opacity-50"
           >
@@ -274,7 +283,7 @@ export default function DoctorDetailsPage() {
           </button>
           <button
             type="button"
-            disabled={busyAction === "status"}
+            disabled={busyAction === "status" || isFallbackDetail}
             onClick={() => void toggleStatus()}
             className={`rounded-full px-4 py-2 text-sm font-semibold transition disabled:opacity-50 ${
               detail.profile.is_active
@@ -346,6 +355,12 @@ export default function DoctorDetailsPage() {
 
       {actionError ? (
         <div className="rounded-2xl border border-red-100 bg-red-50 px-5 py-4 text-sm text-red-700">{actionError}</div>
+      ) : null}
+
+      {isFallbackDetail ? (
+        <div className="rounded-2xl border border-amber-200 bg-amber-50 px-5 py-4 text-sm text-amber-800">
+          Showing a verification-backed summary because the extended admin doctor detail endpoints are not mounted in this environment. Verification actions remain available.
+        </div>
       ) : null}
 
       <section className="rounded-3xl border border-gray-200 bg-white p-6 shadow-sm">

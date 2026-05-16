@@ -12,6 +12,7 @@ const verificationOptions: Array<{ key: "all" | DoctorVerificationStatus; label:
   { key: "pending", label: "Pending" },
   { key: "approved", label: "Approved" },
   { key: "rejected", label: "Rejected" },
+  { key: "suspended", label: "Suspended" },
 ];
 
 const statusOptions = [
@@ -24,6 +25,7 @@ const verificationBadgeClass: Record<DoctorVerificationStatus, string> = {
   pending: "border-yellow-200 bg-yellow-50 text-yellow-800",
   approved: "border-green-200 bg-green-50 text-green-800",
   rejected: "border-red-200 bg-red-50 text-red-800",
+  suspended: "bg-slate-100 text-slate-700",
 };
 
 function Badge({ label, className }: { label: string; className: string }) {

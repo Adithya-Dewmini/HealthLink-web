@@ -12,6 +12,7 @@ const verificationOptions: Array<{ key: "all" | MedicalCenterVerificationStatus;
   { key: "pending", label: "Pending" },
   { key: "approved", label: "Approved" },
   { key: "rejected", label: "Rejected" },
+  { key: "suspended", label: "Suspended" },
 ];
 
 const statusOptions = [

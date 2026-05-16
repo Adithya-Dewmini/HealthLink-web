@@ -1,4 +1,4 @@
-export type DoctorVerificationStatus = "pending" | "approved" | "rejected";
+export type DoctorVerificationStatus = "pending" | "approved" | "rejected" | "suspended";
 
 export type AdminDoctorListItem = {
   id: string;
@@ -65,6 +65,7 @@ export type AdminDoctorSchedule = {
 };
 
 export type AdminDoctorDetails = {
+  data_mode?: "full" | "fallback";
   profile: {
     id: string;
     user_id: number;

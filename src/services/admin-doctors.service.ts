@@ -1,4 +1,6 @@
+import axios from "axios";
 import { api, getApiErrorMessage } from "./api";
+import { fetchVerificationEntityDetail } from "./admin-verifications.service";
 import type {
   AdminDoctorAssociation,
   AdminDoctorDetails,
@@ -45,6 +47,45 @@ export async function fetchAdminDoctorDetails(id: string) {
     const response = await api.get<AdminDoctorDetails>(`/api/admin/doctors/${id}`);
     return response.data;
   } catch (error) {
+    if (axios.isAxiosError(error) && error.response?.status === 404) {
+      try {
+        const verification = await fetchVerificationEntityDetail("doctor", id);
+        return {
+          data_mode: "fallback",
+          profile: {
+            id: String(verification.profile.entityId),
+            user_id: Number(verification.linkedAccount?.id ?? 0),
+            name: verification.profile.entityName,
+            email: verification.linkedAccount?.email || "Not available",
+            specialization:
+              verification.metadata.find((item) =>
+                String(item.label || "").toLowerCase().includes("special")
+              )?.value?.toString() || null,
+            experience_years: null,
+            verification_status: verification.profile.status,
+            verified_at: verification.profile.verifiedAt ?? null,
+            verification_notes: verification.profile.verificationNotes ?? null,
+            is_active: true,
+            is_visible: true,
+            created_at: verification.profile.submittedAt || new Date().toISOString(),
+          },
+          activity_summary: {
+            total_consultations: 0,
+            prescriptions_issued: 0,
+            active_schedules: 0,
+            availability_summary: [],
+            recent_activity: [],
+          },
+          relationships: {
+            clinic_associations: [],
+            join_requests: [],
+            invite_history: [],
+          },
+        } satisfies AdminDoctorDetails;
+      } catch {
+        // Fall through to the original error below.
+      }
+    }
     throw new Error(getApiErrorMessage(error, "Unable to load doctor details."));
   }
 }
@@ -54,6 +95,9 @@ export async function fetchAdminDoctorAssociations(id: string) {
     const response = await api.get<AdminDoctorAssociation[]>(`/api/admin/doctors/${id}/associations`);
     return response.data;
   } catch (error) {
+    if (axios.isAxiosError(error) && error.response?.status === 404) {
+      return [];
+    }
     throw new Error(getApiErrorMessage(error, "Unable to load doctor associations."));
   }
 }
@@ -63,6 +107,9 @@ export async function fetchAdminDoctorSchedules(id: string) {
     const response = await api.get<AdminDoctorSchedule[]>(`/api/admin/doctors/${id}/schedules`);
     return response.data;
   } catch (error) {
+    if (axios.isAxiosError(error) && error.response?.status === 404) {
+      return [];
+    }
     throw new Error(getApiErrorMessage(error, "Unable to load doctor schedules."));
   }
 }

@@ -771,6 +771,166 @@ a {
   box-shadow: 0 14px 36px rgba(15, 55, 82, 0.07);
 }
 
+.center-shell {
+  gap: 18px;
+  padding: 18px;
+  background:
+    radial-gradient(circle at top left, rgba(16, 185, 129, 0.1), transparent 24%),
+    linear-gradient(180deg, #f7fcfa 0%, #f3f8f6 100%);
+}
+
+.center-shell .sidebar,
+.center-shell .dashboard-main,
+.center-shell .card {
+  border-color: #ddefe8;
+  box-shadow: 0 16px 36px rgba(6, 78, 59, 0.06);
+}
+
+.center-sidebar {
+  gap: 18px;
+  border-radius: 24px;
+  background:
+    linear-gradient(180deg, #064e3b 0%, #0f766e 50%, #047857 100%);
+}
+
+.center-sidebar .sidebar-section {
+  gap: 12px;
+}
+
+.center-sidebar .sidebar-badge {
+  min-height: auto;
+  justify-content: flex-start;
+  padding: 0;
+  background: transparent;
+  color: #d1fae5;
+  font-size: 0.72rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.center-sidebar .reception-brand-mark {
+  background: rgba(255, 255, 255, 0.12);
+  color: #d1fae5;
+}
+
+.center-sidebar .sidebar-title {
+  margin-top: 3px;
+  color: #ffffff;
+  font-size: 1.18rem;
+}
+
+.center-sidebar .sidebar-description {
+  padding: 11px 12px;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.08);
+  color: #d9f6ee;
+  font-size: 0.84rem;
+  line-height: 1.5;
+}
+
+.center-sidebar .sidebar-nav {
+  gap: 6px;
+}
+
+.center-sidebar .sidebar-link {
+  min-height: 50px;
+  gap: 11px;
+  padding: 10px 11px;
+  border-radius: 14px;
+  border: 1px solid transparent;
+  background: rgba(255, 255, 255, 0.05);
+  color: rgba(255, 255, 255, 0.9);
+  transition: background 0.16s ease, border-color 0.16s ease, color 0.16s ease, transform 0.16s ease;
+}
+
+.center-sidebar .sidebar-link:hover {
+  border-color: rgba(209, 250, 229, 0.22);
+  background: rgba(255, 255, 255, 0.11);
+  color: #ffffff;
+  transform: translateY(-1px);
+}
+
+.center-sidebar .sidebar-link-active {
+  border-color: rgba(209, 250, 229, 0.42);
+  background: linear-gradient(135deg, rgba(209, 250, 229, 0.18) 0%, rgba(255, 255, 255, 0.14) 100%);
+  color: #ffffff;
+}
+
+.center-sidebar .sidebar-link-active .sidebar-link-icon {
+  color: #d1fae5;
+}
+
+.center-shell .dashboard-main {
+  gap: 18px;
+  padding: 0;
+  border-radius: 30px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.92) 0%, rgba(248, 250, 252, 0.98) 100%);
+}
+
+.center-shell .dashboard-content {
+  gap: 22px;
+  padding: 22px;
+}
+
+.center-topbar {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  min-height: 88px;
+  padding: 18px 22px;
+  border: 1px solid #ddefe8;
+  border-radius: 28px;
+  background: linear-gradient(180deg, rgba(236, 253, 245, 0.96) 0%, rgba(255, 255, 255, 0.96) 100%);
+  box-shadow: 0 14px 32px -26px rgba(6, 78, 59, 0.32);
+}
+
+.center-topbar .app-eyebrow {
+  color: #047857;
+  letter-spacing: 0.14em;
+}
+
+.center-topbar .app-title {
+  color: #064e3b;
+}
+
+.center-topbar .app-subtitle {
+  color: #567166;
+}
+
+.center-topbar .user-summary {
+  text-align: right;
+}
+
+.center-shell .button-primary {
+  background: linear-gradient(135deg, #047857 0%, #0f766e 100%);
+}
+
+.center-shell .button-primary:hover:not(:disabled) {
+  background: linear-gradient(135deg, #065f46 0%, #0b6b63 100%);
+}
+
+.center-shell .button-secondary {
+  border: 1px solid #b7e4d6;
+  background: #ecfdf5;
+  color: #047857;
+}
+
+.center-shell .button-ghost {
+  border: 1px solid #ddefe8;
+  background: #ffffff;
+  color: #047857;
+}
+
+.center-shell .button-danger {
+  background: #fef2f2;
+}
+
+.center-shell .field-input:focus {
+  border-color: #047857;
+  box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.12);
+}
+
 .reception-shell .dashboard-main {
   min-height: 0;
   display: grid;
@@ -1338,8 +1498,16 @@ a {
     overflow: visible;
   }
 
+  .center-shell {
+    gap: 16px;
+  }
+
   .reception-sidebar .sidebar-nav {
     grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
+
+  .center-sidebar .sidebar-nav {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 
   .reception-sidebar .sidebar-link {
@@ -1393,9 +1561,17 @@ a {
     padding: 12px;
   }
 
+  .center-shell {
+    padding: 12px;
+  }
+
   .reception-shell .dashboard-content {
     padding: 16px;
     overflow: visible;
+  }
+
+  .center-shell .dashboard-content {
+    padding: 16px;
   }
 
   .reception-topbar {
@@ -1411,7 +1587,16 @@ a {
     grid-template-columns: 1fr;
   }
 
+  .center-sidebar .sidebar-nav {
+    grid-template-columns: 1fr;
+  }
+
   .reception-sidebar .sidebar-link {
+    min-height: 48px;
+    align-items: center;
+  }
+
+  .center-sidebar .sidebar-link {
     min-height: 48px;
     align-items: center;
   }

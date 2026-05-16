@@ -67,6 +67,7 @@ export default function MedicalCenterDetailsPage() {
   const [actionError, setActionError] = useState("");
   const [updating, setUpdating] = useState(false);
   const [activeTab, setActiveTab] = useState<DetailTab>("profile");
+  const isFallbackDetail = detail?.data_mode === "fallback";
 
   useEffect(() => {
     let active = true;
@@ -151,18 +152,26 @@ export default function MedicalCenterDetailsPage() {
         <Link to="/admin/clinics" className="text-sm font-semibold text-[#21A5EC] hover:text-[#0D86C5]">
           Back to medical centers
         </Link>
-        <button
-          type="button"
-          disabled={updating}
-          onClick={() => void toggleStatus()}
-          className={`rounded-full px-5 py-2.5 text-sm font-semibold transition ${
-            detail.profile.is_active
-              ? "border border-red-200 bg-red-50 text-red-700 hover:bg-red-100"
-              : "bg-[#0F8F58] text-white hover:bg-[#0A7748]"
-          } disabled:cursor-not-allowed disabled:opacity-50`}
-        >
-          {updating ? "Updating..." : detail.profile.is_active ? "Deactivate center" : "Activate center"}
-        </button>
+        <div className="flex flex-wrap gap-2">
+          <Link
+            to={`/admin/verifications/clinic/${detail.profile.id}`}
+            className="rounded-full border border-slate-200 bg-white px-5 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+          >
+            Open verification review
+          </Link>
+          <button
+            type="button"
+            disabled={updating || isFallbackDetail}
+            onClick={() => void toggleStatus()}
+            className={`rounded-full px-5 py-2.5 text-sm font-semibold transition ${
+              detail.profile.is_active
+                ? "border border-red-200 bg-red-50 text-red-700 hover:bg-red-100"
+                : "bg-[#0F8F58] text-white hover:bg-[#0A7748]"
+            } disabled:cursor-not-allowed disabled:opacity-50`}
+          >
+            {updating ? "Updating..." : detail.profile.is_active ? "Deactivate center" : "Activate center"}
+          </button>
+        </div>
       </div>
 
       <section className="rounded-3xl border border-[#DCEAF3] bg-[linear-gradient(135deg,#FBFDFF_0%,#F3FAFE_100%)] p-6 shadow-sm">
@@ -210,6 +219,12 @@ export default function MedicalCenterDetailsPage() {
 
       {actionError ? (
         <div className="rounded-2xl border border-red-100 bg-red-50 px-5 py-4 text-sm text-red-700">{actionError}</div>
+      ) : null}
+
+      {isFallbackDetail ? (
+        <div className="rounded-2xl border border-amber-200 bg-amber-50 px-5 py-4 text-sm text-amber-800">
+          Showing a verification-backed summary because the extended admin medical center detail endpoint is not mounted in this environment. Verification review remains available.
+        </div>
       ) : null}
 
       <section className="rounded-3xl border border-gray-200 bg-white p-6 shadow-sm">

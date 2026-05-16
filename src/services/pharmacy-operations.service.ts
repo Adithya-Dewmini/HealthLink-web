@@ -69,6 +69,7 @@ export type PharmacyStorefront = {
 };
 
 export type PharmacyOrderStatus =
+  | "pending_payment"
   | "pending"
   | "confirmed"
   | "preparing"
@@ -78,7 +79,76 @@ export type PharmacyOrderStatus =
   | "out_for_delivery"
   | "delivered"
   | "completed"
-  | "cancelled";
+  | "cancelled"
+  | "rejected";
+
+export type PharmacyPaymentStatus = "pending" | "paid" | "failed" | "cancelled" | "refunded";
+
+export type PharmacyInvoiceSummary = {
+  id: number;
+  invoiceNo: string;
+  subtotal: number;
+  deliveryFee: number;
+  serviceFee: number;
+  discount: number;
+  total: number;
+  currency: string;
+  pdfUrl: string | null;
+  issuedAt: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type PharmacyInvoiceDetails = {
+  invoice: PharmacyInvoiceSummary;
+  order: {
+    id: number;
+    orderCode: string | null;
+    status: string;
+    fulfillmentType: "pickup" | "delivery";
+    notes: string | null;
+    paymentMethod: "cash" | "online" | null;
+    paymentStatus: PharmacyPaymentStatus | null;
+    paidAt: string | null;
+    createdAt: string | null;
+  };
+  payment: {
+    id: number | null;
+    gateway: string | null;
+    gatewayPaymentId: string | null;
+    gatewayOrderId: string | null;
+    amount: number;
+    currency: string;
+    status: PharmacyPaymentStatus | null;
+    method: string | null;
+    cardNoMasked: string | null;
+    verifiedAt: string | null;
+  } | null;
+  pharmacy: {
+    id: number;
+    name: string;
+    phone: string | null;
+    email: string | null;
+    address: string | null;
+  };
+  patient: {
+    id: number;
+    name: string | null;
+    email: string | null;
+    phone: string | null;
+  };
+  items: Array<{
+    id: number;
+    name: string;
+    quantity: number;
+    requestedQuantity: number;
+    approvedQuantity: number;
+    unitPrice: number;
+    totalPrice: number;
+    status: string;
+    note: string | null;
+  }>;
+};
 
 export type PharmacyOrder = {
   id: number;
@@ -92,7 +162,12 @@ export type PharmacyOrder = {
   subtotal: number;
   discountTotal: number;
   total: number;
+  currency: string;
   fulfillmentType: "pickup" | "delivery";
+  paymentMethod: "cash" | "online" | null;
+  paymentStatus: PharmacyPaymentStatus | null;
+  paidAt: string | null;
+  invoice: PharmacyInvoiceSummary | null;
   notes: string | null;
   deliveryAddress: {
     line1: string;
@@ -114,6 +189,51 @@ export type PharmacyOrder = {
     totalPrice: number;
     requiresPrescription: boolean;
   }>;
+};
+
+const normalizeInvoiceSummary = (item: any): PharmacyInvoiceSummary | null => {
+  if (!item || typeof item !== "object") return null;
+  const invoiceNo =
+    typeof item?.invoiceNo === "string"
+      ? item.invoiceNo
+      : typeof item?.invoice_no === "string"
+        ? item.invoice_no
+        : "";
+  if (!invoiceNo) return null;
+  return {
+    id: Number(item?.id ?? 0),
+    invoiceNo,
+    subtotal: normalizeMoney(item?.subtotal),
+    deliveryFee: normalizeMoney(item?.deliveryFee ?? item?.delivery_fee),
+    serviceFee: normalizeMoney(item?.serviceFee ?? item?.service_fee),
+    discount: normalizeMoney(item?.discount),
+    total: normalizeMoney(item?.total),
+    currency: typeof item?.currency === "string" ? item.currency : "LKR",
+    pdfUrl:
+      typeof item?.pdfUrl === "string"
+        ? item.pdfUrl
+        : typeof item?.pdf_url === "string"
+          ? item.pdf_url
+          : null,
+    issuedAt:
+      typeof item?.issuedAt === "string"
+        ? item.issuedAt
+        : typeof item?.issued_at === "string"
+          ? item.issued_at
+          : new Date().toISOString(),
+    createdAt:
+      typeof item?.createdAt === "string"
+        ? item.createdAt
+        : typeof item?.created_at === "string"
+          ? item.created_at
+          : new Date().toISOString(),
+    updatedAt:
+      typeof item?.updatedAt === "string"
+        ? item.updatedAt
+        : typeof item?.updated_at === "string"
+          ? item.updated_at
+          : new Date().toISOString(),
+  };
 };
 
 const normalizeMoney = (value: unknown) => {
@@ -262,10 +382,25 @@ const normalizeOrder = (item: any): PharmacyOrder => ({
   subtotal: normalizeMoney(item?.subtotal),
   discountTotal: normalizeMoney(item?.discountTotal ?? item?.discount_total),
   total: normalizeMoney(item?.total),
+  currency: typeof item?.currency === "string" ? item.currency : "LKR",
   fulfillmentType:
     item?.fulfillmentType === "delivery" || item?.fulfillment_type === "delivery"
       ? "delivery"
       : "pickup",
+  paymentMethod:
+    item?.paymentMethod === "online" || item?.payment_method === "online"
+      ? "online"
+      : item?.paymentMethod === "cash" || item?.payment_method === "cash"
+        ? "cash"
+        : null,
+  paymentStatus: (item?.paymentStatus ?? item?.payment_status ?? null) as PharmacyPaymentStatus | null,
+  paidAt:
+    typeof item?.paidAt === "string"
+      ? item.paidAt
+      : typeof item?.paid_at === "string"
+        ? item.paid_at
+        : null,
+  invoice: normalizeInvoiceSummary(item?.invoice),
   notes: typeof item?.notes === "string" ? item.notes : null,
   deliveryAddress:
     item?.deliveryAddress && typeof item.deliveryAddress === "object"
@@ -315,6 +450,7 @@ const normalizeOrder = (item: any): PharmacyOrder => ({
 });
 
 export const ORDER_STATUS_LABELS: Record<PharmacyOrderStatus, string> = {
+  pending_payment: "Awaiting payment",
   pending: "Pending review",
   confirmed: "Confirmed",
   preparing: "Preparing",
@@ -325,10 +461,12 @@ export const ORDER_STATUS_LABELS: Record<PharmacyOrderStatus, string> = {
   delivered: "Delivered",
   completed: "Completed",
   cancelled: "Cancelled",
+  rejected: "Rejected",
 };
 
 const ORDER_TRANSITIONS: Record<PharmacyOrder["fulfillmentType"], Record<PharmacyOrderStatus, PharmacyOrderStatus[]>> = {
   pickup: {
+    pending_payment: [],
     pending: ["confirmed", "awaiting_substitution_approval", "partially_ready", "cancelled"],
     confirmed: ["preparing", "awaiting_substitution_approval", "partially_ready", "cancelled"],
     preparing: ["ready_for_pickup", "awaiting_substitution_approval", "partially_ready", "cancelled"],
@@ -339,8 +477,10 @@ const ORDER_TRANSITIONS: Record<PharmacyOrder["fulfillmentType"], Record<Pharmac
     delivered: [],
     completed: [],
     cancelled: [],
+    rejected: [],
   },
   delivery: {
+    pending_payment: [],
     pending: ["confirmed", "awaiting_substitution_approval", "partially_ready", "cancelled"],
     confirmed: ["preparing", "awaiting_substitution_approval", "partially_ready", "cancelled"],
     preparing: ["out_for_delivery", "awaiting_substitution_approval", "partially_ready", "cancelled"],
@@ -351,6 +491,7 @@ const ORDER_TRANSITIONS: Record<PharmacyOrder["fulfillmentType"], Record<Pharmac
     delivered: [],
     completed: [],
     cancelled: [],
+    rejected: [],
   },
 };
 
@@ -548,6 +689,112 @@ export async function updatePharmacyOrderStatus(orderId: number, status: Pharmac
     return normalizeOrder(response.data.order);
   } catch (error) {
     throw new Error(getApiErrorMessage(error, "Unable to update order status."));
+  }
+}
+
+export async function fetchOrderInvoice(orderId: number) {
+  try {
+    const response = await api.get(`/api/orders/${orderId}/invoice`);
+    const item = response.data;
+    return {
+      invoice: normalizeInvoiceSummary(item?.invoice) as PharmacyInvoiceSummary,
+      order: {
+        id: Number(item?.order?.id ?? 0),
+        orderCode:
+          typeof item?.order?.orderCode === "string"
+            ? item.order.orderCode
+            : typeof item?.order?.order_code === "string"
+              ? item.order.order_code
+              : null,
+        status: String(item?.order?.status ?? "pending"),
+        fulfillmentType:
+          item?.order?.fulfillmentType === "delivery" || item?.order?.fulfillment_type === "delivery"
+            ? "delivery"
+            : "pickup",
+        notes: typeof item?.order?.notes === "string" ? item.order.notes : null,
+        paymentMethod:
+          item?.order?.paymentMethod === "online" || item?.order?.payment_method === "online"
+            ? "online"
+            : item?.order?.paymentMethod === "cash" || item?.order?.payment_method === "cash"
+              ? "cash"
+              : null,
+        paymentStatus: (item?.order?.paymentStatus ?? item?.order?.payment_status ?? null) as PharmacyPaymentStatus | null,
+        paidAt:
+          typeof item?.order?.paidAt === "string"
+            ? item.order.paidAt
+            : typeof item?.order?.paid_at === "string"
+              ? item.order.paid_at
+              : null,
+        createdAt:
+          typeof item?.order?.createdAt === "string"
+            ? item.order.createdAt
+            : typeof item?.order?.created_at === "string"
+              ? item.order.created_at
+              : null,
+      },
+      payment: item?.payment
+        ? {
+            id: item.payment?.id === null || item.payment?.id === undefined ? null : Number(item.payment.id),
+            gateway: typeof item.payment?.gateway === "string" ? item.payment.gateway : null,
+            gatewayPaymentId:
+              typeof item.payment?.gatewayPaymentId === "string"
+                ? item.payment.gatewayPaymentId
+                : typeof item.payment?.gateway_payment_id === "string"
+                  ? item.payment.gateway_payment_id
+                  : null,
+            gatewayOrderId:
+              typeof item.payment?.gatewayOrderId === "string"
+                ? item.payment.gatewayOrderId
+                : typeof item.payment?.gateway_order_id === "string"
+                  ? item.payment.gateway_order_id
+                  : null,
+            amount: normalizeMoney(item.payment?.amount),
+            currency: typeof item.payment?.currency === "string" ? item.payment.currency : "LKR",
+            status: (item.payment?.status ?? null) as PharmacyPaymentStatus | null,
+            method: typeof item.payment?.method === "string" ? item.payment.method : null,
+            cardNoMasked:
+              typeof item.payment?.cardNoMasked === "string"
+                ? item.payment.cardNoMasked
+                : typeof item.payment?.card_no_masked === "string"
+                  ? item.payment.card_no_masked
+                  : null,
+            verifiedAt:
+              typeof item.payment?.verifiedAt === "string"
+                ? item.payment.verifiedAt
+                : typeof item.payment?.verified_at === "string"
+                  ? item.payment.verified_at
+                  : null,
+          }
+        : null,
+      pharmacy: {
+        id: Number(item?.pharmacy?.id ?? 0),
+        name: String(item?.pharmacy?.name ?? "Pharmacy"),
+        phone: typeof item?.pharmacy?.phone === "string" ? item.pharmacy.phone : null,
+        email: typeof item?.pharmacy?.email === "string" ? item.pharmacy.email : null,
+        address: typeof item?.pharmacy?.address === "string" ? item.pharmacy.address : null,
+      },
+      patient: {
+        id: Number(item?.patient?.id ?? 0),
+        name: typeof item?.patient?.name === "string" ? item.patient.name : null,
+        email: typeof item?.patient?.email === "string" ? item.patient.email : null,
+        phone: typeof item?.patient?.phone === "string" ? item.patient.phone : null,
+      },
+      items: Array.isArray(item?.items)
+        ? item.items.map((entry: any) => ({
+            id: Number(entry?.id ?? 0),
+            name: String(entry?.name ?? "").trim() || "Order item",
+            quantity: Number(entry?.quantity ?? 0),
+            requestedQuantity: Number(entry?.requestedQuantity ?? entry?.requested_quantity ?? entry?.quantity ?? 0),
+            approvedQuantity: Number(entry?.approvedQuantity ?? entry?.approved_quantity ?? entry?.quantity ?? 0),
+            unitPrice: normalizeMoney(entry?.unitPrice ?? entry?.unit_price),
+            totalPrice: normalizeMoney(entry?.totalPrice ?? entry?.total_price),
+            status: String(entry?.status ?? "pending"),
+            note: typeof entry?.note === "string" ? entry.note : null,
+          }))
+        : [],
+    } as PharmacyInvoiceDetails;
+  } catch (error) {
+    throw new Error(getApiErrorMessage(error, "Unable to load invoice."));
   }
 }
 

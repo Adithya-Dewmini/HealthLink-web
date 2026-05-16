@@ -3,7 +3,6 @@ import ProtectedRoute from "../components/ProtectedRoute";
 import AdminLayout from "../layouts/AdminLayout";
 import AdminAuditLogsPage from "../pages/admin/AuditLogs";
 import CenterLayout from "../layouts/CenterLayout";
-import DoctorLayout from "../layouts/DoctorLayout";
 import PharmacyLayout from "../layouts/PharmacyLayout";
 import ReceptionLayout from "../layouts/ReceptionLayout";
 import AdminClinicsPage from "../pages/admin/MedicalCentersList";
@@ -20,13 +19,20 @@ import AdminUsersPage from "../pages/admin/UsersList";
 import AdminVerificationsPage from "../pages/admin/VerificationsList";
 import VerificationDetailPage from "../pages/admin/VerificationDetails";
 import CenterDashboardPage from "../pages/center/Dashboard";
-import DoctorDashboardPage from "../pages/doctor/Dashboard";
+import CenterDoctorsPage from "../pages/center/Doctors";
+import CenterReceptionistsPage from "../pages/center/Receptionists";
+import CenterSessionsPage from "../pages/center/Sessions";
+import CenterAppointmentsPage from "../pages/center/Appointments";
+import CenterQueuesPage from "../pages/center/Queues";
+import CenterSettingsPage from "../pages/center/Settings";
 import LoginPage from "../pages/auth/Login";
 import PasswordSuccessPage from "../pages/auth/PasswordSuccess";
 import ResetPasswordPage from "../pages/auth/ResetPassword";
 import SetPasswordPage from "../pages/auth/SetPassword";
 import WelcomePage from "../pages/auth/Welcome";
 import ApprovalStatusPage from "../pages/auth/ApprovalStatus";
+import PaymentCancelPage from "../pages/payment/PaymentCancel";
+import PaymentReturnPage from "../pages/payment/PaymentReturn";
 import PharmacyDashboardPage from "../pages/pharmacy/Dashboard";
 import PharmacyInsightsPage from "../pages/pharmacy/Insights";
 import InventoryPage from "../pages/pharmacy/Inventory";
@@ -126,7 +132,15 @@ export const router = createBrowserRouter([
     element: <WelcomePage />,
   },
   {
-    element: <ProtectedRoute allowedRoles={["medical_center_admin", "pharmacist", "doctor"]} />,
+    path: "/payment/return",
+    element: <PaymentReturnPage />,
+  },
+  {
+    path: "/payment/cancel",
+    element: <PaymentCancelPage />,
+  },
+  {
+    element: <ProtectedRoute allowedRoles={["medical_center_admin", "pharmacist"]} />,
     children: [
       {
         path: "/approval-status",
@@ -309,6 +323,30 @@ export const router = createBrowserRouter([
             path: "dashboard",
             element: <CenterDashboardPage />,
           },
+          {
+            path: "doctors",
+            element: <CenterDoctorsPage />,
+          },
+          {
+            path: "receptionists",
+            element: <CenterReceptionistsPage />,
+          },
+          {
+            path: "sessions",
+            element: <CenterSessionsPage />,
+          },
+          {
+            path: "appointments",
+            element: <CenterAppointmentsPage />,
+          },
+          {
+            path: "queues",
+            element: <CenterQueuesPage />,
+          },
+          {
+            path: "settings",
+            element: <CenterSettingsPage />,
+          },
         ],
       },
     ],
@@ -343,25 +381,6 @@ export const router = createBrowserRouter([
           {
             path: "insights",
             element: <PharmacyInsightsPage />,
-          },
-        ],
-      },
-    ],
-  },
-  {
-    element: <ProtectedRoute allowedRoles={["doctor"]} />,
-    children: [
-      {
-        path: "/doctor",
-        element: <DoctorLayout />,
-        children: [
-          {
-            index: true,
-            element: <Navigate to="dashboard" replace />,
-          },
-          {
-            path: "dashboard",
-            element: <DoctorDashboardPage />,
           },
         ],
       },

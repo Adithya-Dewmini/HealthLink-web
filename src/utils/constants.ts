@@ -37,11 +37,48 @@ export const ADMIN_NAV_ITEMS: SidebarItem[] = [
 ];
 
 export const CENTER_ADMIN_NAV_ITEMS: SidebarItem[] = [
-  { label: "Dashboard", to: "/center/dashboard" },
-];
-
-export const DOCTOR_NAV_ITEMS: SidebarItem[] = [
-  { label: "Dashboard", to: "/doctor/dashboard" },
+  {
+    label: "Dashboard",
+    to: "/center/dashboard",
+    icon: "LayoutDashboard",
+    subtitle: "Today’s clinic overview",
+  },
+  {
+    label: "Doctors",
+    to: "/center/doctors",
+    icon: "Stethoscope",
+    subtitle: "Assignments and invites",
+  },
+  {
+    label: "Receptionists",
+    to: "/center/receptionists",
+    icon: "UsersRound",
+    subtitle: "Desk staff and permissions",
+  },
+  {
+    label: "Sessions",
+    to: "/center/sessions",
+    icon: "CalendarClock",
+    subtitle: "Doctor schedules and capacity",
+  },
+  {
+    label: "Appointments",
+    to: "/center/appointments",
+    icon: "ClipboardList",
+    subtitle: "Daily booking overview",
+  },
+  {
+    label: "Queues",
+    to: "/center/queues",
+    icon: "ListOrdered",
+    subtitle: "Live queue visibility",
+  },
+  {
+    label: "Settings",
+    to: "/center/settings",
+    icon: "Settings2",
+    subtitle: "Profile and workflow info",
+  },
 ];
 
 export const PHARMACY_NAV_ITEMS: SidebarItem[] = [

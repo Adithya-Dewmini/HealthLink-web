@@ -104,12 +104,14 @@ export default function VerificationDetailsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [actionError, setActionError] = useState("");
+  const [actionSuccess, setActionSuccess] = useState("");
   const [actionLoading, setActionLoading] = useState<"" | "approve" | "reject" | "suspend" | "note">("");
   const [noteDraft, setNoteDraft] = useState("");
   const [rejectReason, setRejectReason] = useState("");
   const [suspendReason, setSuspendReason] = useState("");
   const [showRejectModal, setShowRejectModal] = useState(false);
   const [showSuspendModal, setShowSuspendModal] = useState(false);
+  const [reloadTick, setReloadTick] = useState(0);
   const normalizedType = useMemo(
     () => normalizeVerificationEntityType(params.type),
     [params.type]
@@ -144,6 +146,7 @@ export default function VerificationDetailsPage() {
         setNoteDraft(response.profile.verificationNotes || "");
         setError("");
         setActionError("");
+        setActionSuccess("");
       } catch (caughtError) {
         if (!active) {
           return;
@@ -164,7 +167,7 @@ export default function VerificationDetailsPage() {
     return () => {
       active = false;
     };
-  }, [normalizedType, params.id, params.type]);
+  }, [normalizedType, params.id, params.type, reloadTick]);
 
   const refreshDetail = async (
     promise: Promise<VerificationDetail>,
@@ -172,6 +175,7 @@ export default function VerificationDetailsPage() {
   ) => {
     setActionLoading(mode);
     setActionError("");
+    setActionSuccess("");
     try {
       const response = await promise;
       setDetail(response);
@@ -180,6 +184,17 @@ export default function VerificationDetailsPage() {
       setSuspendReason("");
       setShowRejectModal(false);
       setShowSuspendModal(false);
+      setActionSuccess(
+        mode === "approve"
+          ? "Verification approved."
+          : mode === "reject"
+            ? "Verification rejected."
+            : mode === "suspend"
+              ? "Verification suspended."
+              : mode === "note"
+                ? "Review note saved."
+                : ""
+      );
     } catch (caughtError) {
       setActionError(
         caughtError instanceof Error ? caughtError.message : "Unable to process verification action."
@@ -229,8 +244,15 @@ export default function VerificationDetailsPage() {
     }
 
     return (
-      <div className="rounded-3xl border border-red-100 bg-red-50 px-6 py-4 text-sm text-red-700 shadow-sm">
-        {error || "Verification request not found."}
+      <div className="rounded-3xl border border-red-100 bg-red-50 px-6 py-5 text-sm text-red-700 shadow-sm">
+        <p>{error || "Verification request not found."}</p>
+        <button
+          type="button"
+          onClick={() => setReloadTick((current) => current + 1)}
+          className="mt-4 inline-flex rounded-full border border-red-200 bg-white px-4 py-2 text-sm font-semibold text-red-700 transition hover:bg-red-100"
+        >
+          Retry
+        </button>
       </div>
     );
   }
@@ -312,6 +334,12 @@ export default function VerificationDetailsPage() {
         {actionError ? (
           <div className="rounded-2xl border border-red-100 bg-red-50 px-5 py-4 text-sm text-red-700">
             {actionError}
+          </div>
+        ) : null}
+
+        {actionSuccess ? (
+          <div className="rounded-2xl border border-green-100 bg-green-50 px-5 py-4 text-sm text-green-700">
+            {actionSuccess}
           </div>
         ) : null}
 

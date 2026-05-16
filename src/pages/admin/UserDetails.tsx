@@ -45,6 +45,7 @@ export default function UserDetailsPage() {
   const [error, setError] = useState("");
   const [actionError, setActionError] = useState("");
   const [updating, setUpdating] = useState(false);
+  const isFallbackDetail = detail?.data_mode === "fallback";
 
   useEffect(() => {
     let active = true;
@@ -110,7 +111,7 @@ export default function UserDetailsPage() {
         </Link>
         <button
           type="button"
-          disabled={updating}
+          disabled={updating || isFallbackDetail}
           onClick={() => void toggleStatus()}
           className={`rounded-full px-4 py-2 text-sm font-semibold transition disabled:opacity-50 ${
             detail.identity.is_active
@@ -160,6 +161,12 @@ export default function UserDetailsPage() {
 
       {actionError ? (
         <div className="rounded-2xl border border-red-100 bg-red-50 px-5 py-4 text-sm text-red-700">{actionError}</div>
+      ) : null}
+
+      {isFallbackDetail ? (
+        <div className="rounded-2xl border border-amber-200 bg-amber-50 px-5 py-4 text-sm text-amber-800">
+          Showing a summary view because the extended admin user detail endpoint is not mounted in this environment.
+        </div>
       ) : null}
 
       <section className="grid gap-6 xl:grid-cols-2">

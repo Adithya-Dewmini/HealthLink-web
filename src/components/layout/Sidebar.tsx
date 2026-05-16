@@ -1,9 +1,11 @@
 import { NavLink } from "react-router-dom";
 import {
+  Building2,
   CalendarClock,
   ClipboardList,
   LayoutDashboard,
   ListOrdered,
+  Settings2,
   Stethoscope,
   UsersRound,
   type LucideIcon,
@@ -22,27 +24,41 @@ type SidebarProps = {
   title: string;
   description: string;
   items: SidebarItem[];
-  variant?: "default" | "reception";
+  variant?: "default" | "reception" | "center";
 };
 
 const iconMap: Record<string, LucideIcon> = {
+  Building2,
   CalendarClock,
   ClipboardList,
   LayoutDashboard,
   ListOrdered,
+  Settings2,
+  Stethoscope,
   UsersRound,
 };
 
 export default function Sidebar({ badge, title, description, items, variant = "default" }: SidebarProps) {
   const isReception = variant === "reception";
+  const isCenter = variant === "center";
 
   return (
-    <aside className={`sidebar${isReception ? " reception-sidebar" : ""}`}>
+    <aside className={`sidebar${isReception ? " reception-sidebar" : ""}${isCenter ? " center-sidebar" : ""}`}>
       <div className="sidebar-section">
         {isReception ? (
           <div className="reception-brand">
             <div className="reception-brand-mark" aria-hidden="true">
               <Stethoscope size={22} />
+            </div>
+            <div>
+              <div className="sidebar-badge">{badge}</div>
+              <h2 className="sidebar-title">{title}</h2>
+            </div>
+          </div>
+        ) : isCenter ? (
+          <div className="reception-brand">
+            <div className="reception-brand-mark" aria-hidden="true">
+              <Building2 size={22} />
             </div>
             <div>
               <div className="sidebar-badge">{badge}</div>

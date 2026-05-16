@@ -6,6 +6,8 @@ import {
   UNAUTHORIZED_EVENT,
 } from "../utils/constants";
 
+const DEFAULT_PROD_API_URL = "https://healthlink-backend-5a75.onrender.com";
+
 const isLikelyDevHost = (hostname: string) =>
   hostname === "localhost" ||
   hostname === "127.0.0.1" ||
@@ -18,13 +20,13 @@ export function getApiBaseUrl() {
   }
 
   if (typeof window === "undefined") {
-    return "";
+    return DEFAULT_PROD_API_URL;
   }
 
   const { hostname, port, protocol } = window.location;
 
   if (!hostname) {
-    return "";
+    return DEFAULT_PROD_API_URL;
   }
 
   if (port === DEFAULT_DEV_BACKEND_PORT) {
@@ -35,7 +37,7 @@ export function getApiBaseUrl() {
     return `http://${hostname}:${DEFAULT_DEV_BACKEND_PORT}`;
   }
 
-  return "";
+  return DEFAULT_PROD_API_URL;
 }
 
 export function resolveApiAssetUrl(value: string) {

@@ -11,7 +11,7 @@ type DashboardLayoutProps = {
   headerEyebrow: string;
   headerTitle: string;
   navigation: SidebarItem[];
-  variant?: "default" | "reception";
+  variant?: "default" | "reception" | "center";
 };
 
 export default function DashboardLayout({
@@ -27,6 +27,7 @@ export default function DashboardLayout({
   const location = useLocation();
   const { logout, user } = useAuth();
   const isReception = variant === "reception";
+  const isCenter = variant === "center";
   const activeItem =
     navigation
       .filter((item) => item.to && location.pathname.startsWith(item.to))
@@ -43,7 +44,7 @@ export default function DashboardLayout({
   };
 
   return (
-    <div className={`dashboard-shell${isReception ? " reception-shell" : ""}`}>
+    <div className={`dashboard-shell${isReception ? " reception-shell" : ""}${isCenter ? " center-shell" : ""}`}>
       <Sidebar
         badge={badge}
         title={title}
@@ -55,9 +56,18 @@ export default function DashboardLayout({
       <div className="dashboard-main">
         <Header
           eyebrow={headerEyebrow}
-          title={receptionHeaderConfig?.title ?? (isReception && activeItem ? activeItem.label : headerTitle)}
-          subtitle={isReception ? receptionHeaderConfig?.subtitle ?? activeItem?.subtitle ?? "Front desk operations" : undefined}
-          contextLabel={isReception ? "Medical center desk" : undefined}
+          title={
+            receptionHeaderConfig?.title ??
+            ((isReception || isCenter) && activeItem ? activeItem.label : headerTitle)
+          }
+          subtitle={
+            isReception
+              ? receptionHeaderConfig?.subtitle ?? activeItem?.subtitle ?? "Front desk operations"
+              : isCenter
+                ? activeItem?.subtitle ?? "Medical center operations"
+                : undefined
+          }
+          contextLabel={isReception ? "Medical center desk" : isCenter ? "Clinic operations" : undefined}
           user={user}
           onLogout={handleLogout}
           variant={variant}

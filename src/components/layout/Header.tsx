@@ -22,7 +22,7 @@ type HeaderProps = {
   contextLabel?: string;
   user: AuthUser | null;
   onLogout: () => void;
-  variant?: "default" | "reception";
+  variant?: "default" | "reception" | "center";
   actions?: ReceptionHeaderAction[];
 };
 
@@ -55,6 +55,7 @@ export default function Header({
   actions = [],
 }: HeaderProps) {
   const isReception = variant === "reception";
+  const isCenter = variant === "center";
 
   if (isReception) {
     return (
@@ -111,7 +112,7 @@ export default function Header({
   }
 
   return (
-    <header className="app-header">
+    <header className={`app-header${isCenter ? " center-topbar" : ""}`}>
       <div className="app-header-title-block">
         <p className="app-eyebrow">{eyebrow}</p>
         <h1 className="app-title">{title}</h1>
@@ -125,7 +126,7 @@ export default function Header({
             <span>{user?.email ?? contextLabel ?? user?.role ?? "Authenticated session"}</span>
           </span>
         </div>
-        <Button variant="danger" onClick={onLogout}>
+        <Button variant={isCenter ? "secondary" : "danger"} onClick={onLogout}>
           Log out
         </Button>
       </div>
