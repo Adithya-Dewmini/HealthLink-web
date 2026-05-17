@@ -104,3 +104,27 @@ export async function fetchPaymentStatus(orderId: number) {
     throw new Error(getApiErrorMessage(error, "Unable to load payment status."));
   }
 }
+
+export async function fetchPublicPaymentRedirectStatus(input: {
+  orderId: number;
+  paymentId?: number | null;
+  gatewayOrderId?: string | null;
+}) {
+  try {
+    const params = new URLSearchParams();
+    if (input.paymentId) {
+      params.set("paymentId", String(input.paymentId));
+    }
+    if (input.gatewayOrderId) {
+      params.set("gatewayOrderId", input.gatewayOrderId);
+    }
+
+    const suffix = params.toString() ? `?${params.toString()}` : "";
+    const response = await api.get<PaymentStatusSummary>(
+      `/api/payments/payhere/redirect-status/${input.orderId}${suffix}`
+    );
+    return response.data;
+  } catch (error) {
+    throw new Error(getApiErrorMessage(error, "Unable to load payment status."));
+  }
+}

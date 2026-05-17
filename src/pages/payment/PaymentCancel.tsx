@@ -1,8 +1,9 @@
-import { Link, useSearchParams } from "react-router-dom";
-import { useMemo } from "react";
+import { useCallback, useMemo } from "react";
+import { useSearchParams } from "react-router-dom";
 import { useAuth } from "../../hooks/useAuth";
 import { getDefaultRouteForUser } from "../../services/auth.service";
 import { parsePaymentRedirectQuery } from "../../services/payment-status.service";
+import { openMobileDeepLink } from "../../utils/mobileDeepLinks";
 
 export default function PaymentCancelPage() {
   const [searchParams] = useSearchParams();
@@ -10,6 +11,16 @@ export default function PaymentCancelPage() {
   const query = useMemo(() => parsePaymentRedirectQuery(searchParams), [searchParams]);
   const dashboardHref = user ? getDefaultRouteForUser(user) : "/login";
   const ordersHref = user?.role === "pharmacist" ? "/pharmacy/orders" : dashboardHref;
+  const retryPath = query.orderId ? `payment/status/${query.orderId}` : "patient/orders";
+  const retryFallbackHref = query.orderId ? ordersHref : ordersHref;
+
+  const handleBackToCheckout = useCallback(() => {
+    openMobileDeepLink(retryPath, retryFallbackHref);
+  }, [retryFallbackHref, retryPath]);
+
+  const handleOpenDashboard = useCallback(() => {
+    openMobileDeepLink("patient/dashboard", dashboardHref);
+  }, [dashboardHref]);
 
   return (
     <div className="min-h-screen bg-[radial-gradient(circle_at_top,_#FFF4E8_0%,_#FFF9F4_40%,_#FFFFFF_100%)] px-4 py-12">
@@ -31,18 +42,20 @@ export default function PaymentCancelPage() {
         </div>
 
         <div className="mt-8 flex flex-wrap gap-3">
-          <Link
-            to={ordersHref}
+          <button
+            type="button"
+            onClick={handleBackToCheckout}
             className="inline-flex rounded-2xl bg-[linear-gradient(135deg,#0F5AA3_0%,#21A5EC_100%)] px-5 py-3 text-sm font-semibold !text-white no-underline shadow-[0_12px_30px_-18px_rgba(33,165,236,0.8)]"
           >
-            Return to orders
-          </Link>
-          <Link
-            to={dashboardHref}
+            Back to checkout
+          </button>
+          <button
+            type="button"
+            onClick={handleOpenDashboard}
             className="inline-flex rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-slate-700 no-underline"
           >
-            Back to dashboard
-          </Link>
+            Return to dashboard
+          </button>
         </div>
       </div>
     </div>

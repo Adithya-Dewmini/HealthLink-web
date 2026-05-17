@@ -1,13 +1,17 @@
-import { useEffect, useMemo, useState } from "react";
-import { Link, useSearchParams } from "react-router-dom";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { useAuth } from "../../hooks/useAuth";
 import { getDefaultRouteForUser } from "../../services/auth.service";
 import {
-  fetchPaymentStatus,
+  fetchPublicPaymentRedirectStatus,
   parsePaymentRedirectQuery,
   type PaymentRedirectStatus,
   type PaymentStatusSummary,
 } from "../../services/payment-status.service";
+import { openMobileDeepLink } from "../../utils/mobileDeepLinks";
+
+const PAYMENT_RETURN_POLL_WINDOW_MS = 60_000;
+const PAYMENT_RETURN_POLL_INTERVAL_MS = 3_000;
 
 const statusToneClass: Record<NonNullable<PaymentRedirectStatus>, string> = {
   paid: "border-emerald-200 bg-emerald-50 text-emerald-800",
@@ -59,6 +63,8 @@ export default function PaymentReturnPage() {
   const [status, setStatus] = useState<PaymentStatusSummary | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [isPollingStatus, setIsPollingStatus] = useState(false);
+  const [pollSecondsRemaining, setPollSecondsRemaining] = useState(0);
 
   useEffect(() => {
     if (isInitializing) {
@@ -68,13 +74,17 @@ export default function PaymentReturnPage() {
     let active = true;
 
     const load = async () => {
-      if (!query.orderId || !user) {
+      if (!query.orderId) {
         if (active) setLoading(false);
         return;
       }
 
       try {
-        const nextStatus = await fetchPaymentStatus(query.orderId);
+        const nextStatus = await fetchPublicPaymentRedirectStatus({
+          orderId: query.orderId,
+          paymentId: query.paymentId,
+          gatewayOrderId: query.gatewayOrderId,
+        });
         if (!active) return;
         setStatus(nextStatus);
         setError("");
@@ -91,11 +101,83 @@ export default function PaymentReturnPage() {
     return () => {
       active = false;
     };
-  }, [isInitializing, query.orderId, user]);
+  }, [isInitializing, query.gatewayOrderId, query.orderId, query.paymentId]);
+
+  useEffect(() => {
+    if (!query.orderId || loading) {
+      return undefined;
+    }
+
+    const currentStatus = status?.paymentStatus ?? query.paymentStatus ?? null;
+    if (currentStatus !== "pending") {
+      setIsPollingStatus(false);
+      setPollSecondsRemaining(0);
+      return undefined;
+    }
+
+    const startedAt = Date.now();
+    const endAt = startedAt + PAYMENT_RETURN_POLL_WINDOW_MS;
+
+    setIsPollingStatus(true);
+    setPollSecondsRemaining(Math.ceil(PAYMENT_RETURN_POLL_WINDOW_MS / 1000));
+
+    const countdownInterval = window.setInterval(() => {
+      const remainingMs = endAt - Date.now();
+      if (remainingMs <= 0) {
+        setPollSecondsRemaining(0);
+        setIsPollingStatus(false);
+        window.clearInterval(countdownInterval);
+        return;
+      }
+
+      setPollSecondsRemaining(Math.ceil(remainingMs / 1000));
+    }, 1000);
+
+    const refreshInterval = window.setInterval(() => {
+      if (Date.now() >= endAt) {
+        setIsPollingStatus(false);
+        window.clearInterval(refreshInterval);
+        return;
+      }
+
+      void fetchPublicPaymentRedirectStatus({
+        orderId: query.orderId!,
+        paymentId: query.paymentId,
+        gatewayOrderId: query.gatewayOrderId,
+      })
+        .then((nextStatus) => {
+          setStatus(nextStatus);
+          setError("");
+          if (nextStatus.paymentStatus && nextStatus.paymentStatus !== "pending") {
+            setIsPollingStatus(false);
+            setPollSecondsRemaining(0);
+            window.clearInterval(refreshInterval);
+            window.clearInterval(countdownInterval);
+          }
+        })
+        .catch((caughtError) => {
+          setError(caughtError instanceof Error ? caughtError.message : "Unable to load payment status.");
+        });
+    }, PAYMENT_RETURN_POLL_INTERVAL_MS);
+
+    return () => {
+      window.clearInterval(refreshInterval);
+      window.clearInterval(countdownInterval);
+    };
+  }, [loading, query.gatewayOrderId, query.orderId, query.paymentId, query.paymentStatus, status?.paymentStatus]);
 
   const resolvedStatus = status?.paymentStatus ?? query.paymentStatus ?? null;
   const dashboardHref = user ? getDefaultRouteForUser(user) : "/login";
   const ordersHref = user?.role === "pharmacist" ? "/pharmacy/orders" : dashboardHref;
+  const orderDeepLinkPath = query.orderId ? `patient/orders/${query.orderId}` : "patient/orders";
+
+  const handleOpenDashboard = useCallback(() => {
+    openMobileDeepLink("patient/dashboard", dashboardHref);
+  }, [dashboardHref]);
+
+  const handleOpenOrders = useCallback(() => {
+    openMobileDeepLink(orderDeepLinkPath, ordersHref);
+  }, [orderDeepLinkPath, ordersHref]);
 
   return (
     <div className="min-h-screen bg-[radial-gradient(circle_at_top,_#E4F6FF_0%,_#F8FBFE_45%,_#FFFFFF_100%)] px-4 py-12">
@@ -120,6 +202,16 @@ export default function PaymentReturnPage() {
             </span>
           ) : null}
         </div>
+
+        {isPollingStatus ? (
+          <div className="mt-4 rounded-2xl border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-900">
+            <div className="font-semibold">Refreshing payment status...</div>
+            <div className="mt-1 text-sky-700">
+              We are checking for the verified PayHere callback. Auto-refresh continues for about{" "}
+              {pollSecondsRemaining} second{pollSecondsRemaining === 1 ? "" : "s"}.
+            </div>
+          </div>
+        ) : null}
 
         {error ? (
           <div className="mt-6 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
@@ -154,18 +246,20 @@ export default function PaymentReturnPage() {
         </div>
 
         <div className="mt-8 flex flex-wrap gap-3">
-          <Link
-            to={dashboardHref}
+          <button
+            type="button"
+            onClick={handleOpenDashboard}
             className="inline-flex rounded-2xl bg-[linear-gradient(135deg,#0F5AA3_0%,#21A5EC_100%)] px-5 py-3 text-sm font-semibold !text-white no-underline shadow-[0_12px_30px_-18px_rgba(33,165,236,0.8)]"
           >
             Return to dashboard
-          </Link>
-          <Link
-            to={ordersHref}
+          </button>
+          <button
+            type="button"
+            onClick={handleOpenOrders}
             className="inline-flex rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-slate-700 no-underline"
           >
             Open orders
-          </Link>
+          </button>
         </div>
       </div>
     </div>
