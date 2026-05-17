@@ -84,6 +84,7 @@ export default function PaymentReturnPage() {
           orderId: query.orderId,
           paymentId: query.paymentId,
           gatewayOrderId: query.gatewayOrderId,
+          redirectParams: searchParams,
         });
         if (!active) return;
         setStatus(nextStatus);
@@ -101,7 +102,7 @@ export default function PaymentReturnPage() {
     return () => {
       active = false;
     };
-  }, [isInitializing, query.gatewayOrderId, query.orderId, query.paymentId]);
+  }, [isInitializing, query.gatewayOrderId, query.orderId, query.paymentId, searchParams]);
 
   useEffect(() => {
     if (!query.orderId || loading) {
@@ -144,6 +145,7 @@ export default function PaymentReturnPage() {
         orderId: query.orderId!,
         paymentId: query.paymentId,
         gatewayOrderId: query.gatewayOrderId,
+        redirectParams: searchParams,
       })
         .then((nextStatus) => {
           setStatus(nextStatus);
@@ -164,7 +166,7 @@ export default function PaymentReturnPage() {
       window.clearInterval(refreshInterval);
       window.clearInterval(countdownInterval);
     };
-  }, [loading, query.gatewayOrderId, query.orderId, query.paymentId, query.paymentStatus, status?.paymentStatus]);
+  }, [loading, query.gatewayOrderId, query.orderId, query.paymentId, query.paymentStatus, searchParams, status?.paymentStatus]);
 
   const resolvedStatus = status?.paymentStatus ?? query.paymentStatus ?? null;
   const dashboardHref = user ? getDefaultRouteForUser(user) : "/login";

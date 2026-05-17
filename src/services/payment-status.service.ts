@@ -109,9 +109,17 @@ export async function fetchPublicPaymentRedirectStatus(input: {
   orderId: number;
   paymentId?: number | null;
   gatewayOrderId?: string | null;
+  redirectParams?: URLSearchParams;
 }) {
   try {
     const params = new URLSearchParams();
+    if (input.redirectParams) {
+      input.redirectParams.forEach((value, key) => {
+        if (typeof value === "string" && value.trim()) {
+          params.set(key, value);
+        }
+      });
+    }
     if (input.paymentId) {
       params.set("paymentId", String(input.paymentId));
     }
