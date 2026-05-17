@@ -1,8 +1,16 @@
 {
   "rewrites": [
     {
-      "source": "/api/(.*)",
-      "destination": "https://healthlink-backend-5a75.onrender.com/api/$1"
+      "source": "/api/payments/payhere/notify",
+      "destination": "https://healthlink-backend-5a75.onrender.com/api/payments/payhere/notify"
+    },
+    {
+      "source": "/api/payments/payhere/hosted/:path*",
+      "destination": "https://healthlink-backend-5a75.onrender.com/api/payments/payhere/hosted/:path*"
+    },
+    {
+      "source": "/api/:path*",
+      "destination": "https://healthlink-backend-5a75.onrender.com/api/:path*"
     },
     {
       "source": "/(.*)",
