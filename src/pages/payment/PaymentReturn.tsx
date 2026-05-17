@@ -11,14 +11,23 @@ import {
 import { openMobileDeepLink } from "../../utils/mobileDeepLinks";
 
 const PAYMENT_RETURN_POLL_WINDOW_MS = 60_000;
-const PAYMENT_RETURN_POLL_INTERVAL_MS = 3_000;
+const PAYMENT_RETURN_POLL_INTERVAL_MS = 2_500;
 
-const statusToneClass: Record<NonNullable<PaymentRedirectStatus>, string> = {
-  paid: "border-emerald-200 bg-emerald-50 text-emerald-800",
-  pending: "border-sky-200 bg-sky-50 text-sky-800",
-  cancelled: "border-amber-200 bg-amber-50 text-amber-800",
-  failed: "border-rose-200 bg-rose-50 text-rose-800",
-  refunded: "border-slate-200 bg-slate-100 text-slate-700",
+const PAGE = {
+  pageBg: "#F4FAFF",
+  cardBg: "#FFFFFF",
+  softBg: "#F9FCFF",
+  textPrimary: "#0B4F6C",
+  textSecondary: "#5E738A",
+  accent: "#1EA7FD",
+  accentLight: "#2EA8FF",
+  border: "#DDEAF3",
+  successBg: "#EAFBF1",
+  successText: "#138A4D",
+  pendingBg: "#EAF7FF",
+  pendingText: "#0B7DB5",
+  failedBg: "#FFF1F2",
+  failedText: "#D92D20",
 };
 
 const formatMoney = (amount: number, currency: string) =>
@@ -28,33 +37,86 @@ const formatMoney = (amount: number, currency: string) =>
     maximumFractionDigits: 2,
   }).format(amount);
 
-const resolveTitle = (status: PaymentRedirectStatus | null) => {
-  if (status === "paid") return "Payment completed";
-  if (status === "failed") return "Payment could not be confirmed";
-  if (status === "cancelled") return "Payment was cancelled";
-  if (status === "refunded") return "Payment refunded";
-  return "Payment processing";
-};
-
-const resolveDescription = (status: PaymentRedirectStatus | null) => {
+const getStatusTheme = (status: PaymentRedirectStatus | null) => {
   if (status === "paid") {
-    return "Your payment has been confirmed. The order is now ready for processing.";
+    return {
+      bg: PAGE.successBg,
+      text: PAGE.successText,
+      badge: "Paid",
+      title: "Payment completed",
+    };
   }
-
   if (status === "failed") {
-    return "The gateway returned an unsuccessful payment result. You can retry from your orders screen.";
+    return {
+      bg: PAGE.failedBg,
+      text: PAGE.failedText,
+      badge: "Failed",
+      title: "Payment failed",
+    };
   }
-
   if (status === "cancelled") {
-    return "The payment session was cancelled before completion.";
+    return {
+      bg: PAGE.failedBg,
+      text: PAGE.failedText,
+      badge: "Cancelled",
+      title: "Payment cancelled",
+    };
   }
-
-  if (status === "refunded") {
-    return "This payment was marked as refunded by the gateway or system.";
-  }
-
-  return "We received the gateway return. Payment verification may still be completing in the background.";
+  return {
+    bg: PAGE.pendingBg,
+    text: PAGE.pendingText,
+    badge: "Processing",
+    title: "Payment processing",
+  };
 };
+
+const resolveDescription = (status: PaymentRedirectStatus | null, summary: PaymentStatusSummary | null) => {
+  if (status === "paid") {
+    return summary?.invoice?.invoiceNo
+      ? `Payment successful. Invoice ${summary.invoice.invoiceNo} is ready.`
+      : "Payment successful. Your invoice is being prepared.";
+  }
+  if (status === "failed") {
+    return "The payment was not completed. Please try again from the app.";
+  }
+  if (status === "cancelled") {
+    return "You cancelled the payment. Your order is still pending payment.";
+  }
+  return "Payment confirmation is still pending. You can return to the app and check order status anytime.";
+};
+
+const LoadingSection = ({ title }: { title: string }) => (
+  <div
+    className="rounded-[24px] border p-5"
+    style={{ background: PAGE.softBg, borderColor: PAGE.border }}
+  >
+    <p className="text-xs font-semibold uppercase tracking-[0.18em]" style={{ color: PAGE.textSecondary }}>
+      {title}
+    </p>
+    <div className="mt-4 space-y-3">
+      <div className="h-5 w-40 animate-pulse rounded-full bg-slate-200" />
+      <div className="h-4 w-52 animate-pulse rounded-full bg-slate-100" />
+      <div className="h-4 w-32 animate-pulse rounded-full bg-slate-100" />
+    </div>
+  </div>
+);
+
+const DetailRow = ({
+  label,
+  value,
+}: {
+  label: string;
+  value: string;
+}) => (
+  <div className="flex items-start justify-between gap-4 py-2">
+    <span className="text-sm" style={{ color: PAGE.textSecondary }}>
+      {label}
+    </span>
+    <span className="text-right text-sm font-semibold" style={{ color: PAGE.textPrimary }}>
+      {value}
+    </span>
+  </div>
+);
 
 export default function PaymentReturnPage() {
   const [searchParams] = useSearchParams();
@@ -65,6 +127,7 @@ export default function PaymentReturnPage() {
   const [error, setError] = useState("");
   const [isPollingStatus, setIsPollingStatus] = useState(false);
   const [pollSecondsRemaining, setPollSecondsRemaining] = useState(0);
+  const [pollTimedOut, setPollTimedOut] = useState(false);
 
   useEffect(() => {
     if (isInitializing) {
@@ -113,6 +176,7 @@ export default function PaymentReturnPage() {
     if (currentStatus !== "pending") {
       setIsPollingStatus(false);
       setPollSecondsRemaining(0);
+      setPollTimedOut(false);
       return undefined;
     }
 
@@ -120,6 +184,7 @@ export default function PaymentReturnPage() {
     const endAt = startedAt + PAYMENT_RETURN_POLL_WINDOW_MS;
 
     setIsPollingStatus(true);
+    setPollTimedOut(false);
     setPollSecondsRemaining(Math.ceil(PAYMENT_RETURN_POLL_WINDOW_MS / 1000));
 
     const countdownInterval = window.setInterval(() => {
@@ -127,16 +192,17 @@ export default function PaymentReturnPage() {
       if (remainingMs <= 0) {
         setPollSecondsRemaining(0);
         setIsPollingStatus(false);
+        setPollTimedOut(true);
         window.clearInterval(countdownInterval);
         return;
       }
-
       setPollSecondsRemaining(Math.ceil(remainingMs / 1000));
     }, 1000);
 
     const refreshInterval = window.setInterval(() => {
       if (Date.now() >= endAt) {
         setIsPollingStatus(false);
+        setPollTimedOut(true);
         window.clearInterval(refreshInterval);
         return;
       }
@@ -152,6 +218,7 @@ export default function PaymentReturnPage() {
           setError("");
           if (nextStatus.paymentStatus && nextStatus.paymentStatus !== "pending") {
             setIsPollingStatus(false);
+            setPollTimedOut(false);
             setPollSecondsRemaining(0);
             window.clearInterval(refreshInterval);
             window.clearInterval(countdownInterval);
@@ -169,99 +236,189 @@ export default function PaymentReturnPage() {
   }, [loading, query.gatewayOrderId, query.orderId, query.paymentId, query.paymentStatus, searchParams, status?.paymentStatus]);
 
   const resolvedStatus = status?.paymentStatus ?? query.paymentStatus ?? null;
+  const statusTheme = getStatusTheme(resolvedStatus);
   const dashboardHref = user ? getDefaultRouteForUser(user) : "/login";
-  const ordersHref = user?.role === "pharmacist" ? "/pharmacy/orders" : dashboardHref;
-  const orderDeepLinkPath = query.orderId ? `patient/orders/${query.orderId}` : "patient/orders";
+  const ordersFallbackHref = user?.role === "pharmacist" ? "/pharmacy/orders" : dashboardHref;
+  const orderDetailsPath = query.orderId ? `patient/orders/${query.orderId}` : "patient/orders";
+  const invoice = status?.invoice ?? null;
 
   const handleOpenDashboard = useCallback(() => {
     openMobileDeepLink("patient/dashboard", dashboardHref);
   }, [dashboardHref]);
 
   const handleOpenOrders = useCallback(() => {
-    openMobileDeepLink(orderDeepLinkPath, ordersHref);
-  }, [orderDeepLinkPath, ordersHref]);
+    openMobileDeepLink("patient/orders", ordersFallbackHref);
+  }, [ordersFallbackHref]);
+
+  const handleOpenOrderDetails = useCallback(() => {
+    openMobileDeepLink(orderDetailsPath, ordersFallbackHref);
+  }, [orderDetailsPath, ordersFallbackHref]);
 
   return (
-    <div className="min-h-screen bg-[radial-gradient(circle_at_top,_#E4F6FF_0%,_#F8FBFE_45%,_#FFFFFF_100%)] px-4 py-12">
-      <div className="mx-auto max-w-3xl rounded-[32px] border border-[#D6EAF7] bg-white p-8 shadow-[0_35px_90px_-55px_rgba(5,63,86,0.5)]">
-        <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[#21A5EC]">Payment return</p>
-        <h1 className="mt-3 text-3xl font-semibold text-[#053F56]">{resolveTitle(resolvedStatus)}</h1>
-        <p className="mt-3 max-w-2xl text-sm leading-7 text-slate-600">
-          {status?.message || resolveDescription(resolvedStatus)}
-        </p>
-
-        <div className="mt-6 flex flex-wrap gap-3">
-          <span
-            className={`inline-flex rounded-full border px-3 py-1 text-sm font-semibold ${
-              resolvedStatus ? statusToneClass[resolvedStatus] : "border-sky-200 bg-sky-50 text-sky-800"
-            }`}
-          >
-            {resolvedStatus ? resolvedStatus.replace(/_/g, " ") : "processing"}
-          </span>
-          {loading ? (
-            <span className="inline-flex rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-sm font-semibold text-slate-600">
-              Checking latest status...
+    <div className="min-h-screen px-4 py-10" style={{ background: PAGE.pageBg }}>
+      <div
+        className="mx-auto w-full max-w-2xl rounded-[30px] border p-5 shadow-[0_30px_80px_-55px_rgba(11,79,108,0.35)] sm:p-8"
+        style={{ background: PAGE.cardBg, borderColor: PAGE.border }}
+      >
+        <div
+          className="rounded-[24px] border p-5 sm:p-6"
+          style={{ background: statusTheme.bg, borderColor: PAGE.border }}
+        >
+          <p className="text-xs font-semibold uppercase tracking-[0.22em]" style={{ color: PAGE.accent }}>
+            Payment Return
+          </p>
+          <div className="mt-4 flex flex-wrap items-center gap-3">
+            <span
+              className="inline-flex rounded-full px-3 py-1 text-xs font-bold uppercase tracking-[0.12em]"
+              style={{ background: "#FFFFFF", color: statusTheme.text }}
+            >
+              {statusTheme.badge}
             </span>
+            {loading ? (
+              <span className="text-sm font-medium" style={{ color: PAGE.textSecondary }}>
+                Checking payment confirmation...
+              </span>
+            ) : null}
+          </div>
+          <h1 className="mt-4 text-[2rem] font-semibold leading-tight sm:text-[2.35rem]" style={{ color: PAGE.textPrimary }}>
+            {statusTheme.title}
+          </h1>
+          <p className="mt-3 text-sm leading-7 sm:text-[15px]" style={{ color: PAGE.textSecondary }}>
+            {loading
+              ? "Checking payment confirmation… This usually takes a few seconds after PayHere returns."
+              : resolveDescription(resolvedStatus, status)}
+          </p>
+          {isPollingStatus ? (
+            <div className="mt-4 rounded-2xl bg-white/80 px-4 py-3 text-sm" style={{ color: PAGE.pendingText }}>
+              <div className="font-semibold">Checking payment confirmation…</div>
+              <div className="mt-1">
+                This usually takes a few seconds after PayHere returns. Auto-refresh continues for about{" "}
+                {pollSecondsRemaining} second{pollSecondsRemaining === 1 ? "" : "s"}.
+              </div>
+            </div>
+          ) : null}
+          {pollTimedOut && resolvedStatus === "pending" ? (
+            <div className="mt-4 rounded-2xl bg-white/80 px-4 py-3 text-sm" style={{ color: PAGE.pendingText }}>
+              Payment is still pending. You can return to the app and check your order status later.
+            </div>
           ) : null}
         </div>
 
-        {isPollingStatus ? (
-          <div className="mt-4 rounded-2xl border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-900">
-            <div className="font-semibold">Refreshing payment status...</div>
-            <div className="mt-1 text-sky-700">
-              We are checking for the verified PayHere callback. Auto-refresh continues for about{" "}
-              {pollSecondsRemaining} second{pollSecondsRemaining === 1 ? "" : "s"}.
-            </div>
-          </div>
-        ) : null}
-
         {error ? (
-          <div className="mt-6 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+          <div className="mt-5 rounded-2xl border px-4 py-3 text-sm" style={{ borderColor: PAGE.border, background: PAGE.failedBg, color: PAGE.failedText }}>
             {error}
           </div>
         ) : null}
 
-        <div className="mt-8 grid gap-4 md:grid-cols-2">
-          <div className="rounded-3xl border border-slate-200 bg-slate-50 p-5">
-            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Order</p>
-            <p className="mt-2 text-2xl font-semibold text-[#053F56]">{query.orderId ?? "Unavailable"}</p>
-            <p className="mt-3 text-sm text-slate-500">
-              Gateway order: {query.gatewayOrderId ?? status?.payment?.gatewayOrderId ?? "Unavailable"}
-            </p>
-            <p className="mt-1 text-sm text-slate-500">
-              Payment record: {query.paymentId ?? status?.payment?.id ?? "Unavailable"}
-            </p>
-          </div>
+        <div className="mt-6 grid gap-4">
+          {loading ? (
+            <>
+              <LoadingSection title="Order details" />
+              <LoadingSection title="Payment details" />
+              <LoadingSection title="Invoice" />
+            </>
+          ) : (
+            <>
+              <div className="rounded-[24px] border p-5" style={{ background: PAGE.softBg, borderColor: PAGE.border }}>
+                <p className="text-xs font-semibold uppercase tracking-[0.18em]" style={{ color: PAGE.textSecondary }}>
+                  Order Details
+                </p>
+                <div className="mt-3">
+                  <DetailRow label="Order" value={query.orderId ? `#${query.orderId}` : "Unavailable"} />
+                  <DetailRow
+                    label="Gateway order"
+                    value={query.gatewayOrderId ?? status?.payment?.gatewayOrderId ?? "Unavailable"}
+                  />
+                  {status?.updatedAt ? (
+                    <DetailRow
+                      label="Last updated"
+                      value={new Date(status.updatedAt).toLocaleString("en-LK")}
+                    />
+                  ) : null}
+                </div>
+              </div>
 
-          <div className="rounded-3xl border border-slate-200 bg-slate-50 p-5">
-            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Status</p>
-            <p className="mt-2 text-2xl font-semibold text-[#053F56]">
-              {status?.paymentStatus ? status.paymentStatus.replace(/_/g, " ") : "Pending verification"}
-            </p>
-            <p className="mt-3 text-sm text-slate-500">
-              Amount: {status ? formatMoney(status.amount, status.currency) : "Unavailable"}
-            </p>
-            <p className="mt-1 text-sm text-slate-500">
-              Invoice: {status?.invoice?.invoiceNo ?? "Not issued yet"}
-            </p>
-          </div>
+              <div className="rounded-[24px] border p-5" style={{ background: PAGE.softBg, borderColor: PAGE.border }}>
+                <p className="text-xs font-semibold uppercase tracking-[0.18em]" style={{ color: PAGE.textSecondary }}>
+                  Payment Details
+                </p>
+                <div className="mt-3">
+                  <DetailRow label="Status" value={statusTheme.badge} />
+                  <DetailRow
+                    label="Amount"
+                    value={status ? formatMoney(status.amount, status.currency) : "Pending confirmation"}
+                  />
+                  {status?.payment?.gatewayPaymentId ? (
+                    <DetailRow label="Gateway payment" value={status.payment.gatewayPaymentId} />
+                  ) : null}
+                  {status?.paidAt ? (
+                    <DetailRow
+                      label="Confirmed at"
+                      value={new Date(status.paidAt).toLocaleString("en-LK")}
+                    />
+                  ) : null}
+                </div>
+              </div>
+
+              {invoice ? (
+                <div className="rounded-[24px] border p-5" style={{ background: PAGE.softBg, borderColor: PAGE.border }}>
+                  <p className="text-xs font-semibold uppercase tracking-[0.18em]" style={{ color: PAGE.textSecondary }}>
+                    Invoice Details
+                  </p>
+                  <div className="mt-3">
+                    <DetailRow label="Invoice number" value={invoice.invoiceNo} />
+                    <DetailRow label="Invoice status" value={invoice.status || "Issued"} />
+                    <DetailRow label="Invoice amount" value={formatMoney(invoice.amount ?? invoice.total, invoice.currency)} />
+                    <DetailRow label="Issued at" value={new Date(invoice.issuedAt).toLocaleString("en-LK")} />
+                    <DetailRow
+                      label="Email status"
+                      value={invoice.emailedAt ? `Sent ${new Date(invoice.emailedAt).toLocaleString("en-LK")}` : "Pending email"}
+                    />
+                  </div>
+                </div>
+              ) : (
+                <div className="rounded-[24px] border p-5" style={{ background: PAGE.softBg, borderColor: PAGE.border }}>
+                  <p className="text-xs font-semibold uppercase tracking-[0.18em]" style={{ color: PAGE.textSecondary }}>
+                    Invoice
+                  </p>
+                  <p className="mt-3 text-sm leading-7" style={{ color: PAGE.textSecondary }}>
+                    {resolvedStatus === "paid"
+                      ? "Invoice details will appear here once the payment confirmation finishes syncing."
+                      : "Invoice will appear after payment confirmation."}
+                  </p>
+                </div>
+              )}
+            </>
+          )}
         </div>
 
-        <div className="mt-8 flex flex-wrap gap-3">
+        <div className="mt-6 flex flex-wrap gap-3">
           <button
             type="button"
             onClick={handleOpenDashboard}
-            className="inline-flex rounded-2xl bg-[linear-gradient(135deg,#0F5AA3_0%,#21A5EC_100%)] px-5 py-3 text-sm font-semibold !text-white no-underline shadow-[0_12px_30px_-18px_rgba(33,165,236,0.8)]"
+            className="inline-flex min-h-[48px] items-center justify-center rounded-2xl px-5 py-3 text-sm font-semibold text-white"
+            style={{ background: `linear-gradient(135deg, ${PAGE.accent} 0%, ${PAGE.accentLight} 100%)` }}
           >
             Return to dashboard
           </button>
           <button
             type="button"
             onClick={handleOpenOrders}
-            className="inline-flex rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-slate-700 no-underline"
+            className="inline-flex min-h-[48px] items-center justify-center rounded-2xl border px-5 py-3 text-sm font-semibold"
+            style={{ borderColor: PAGE.border, background: PAGE.cardBg, color: PAGE.textPrimary }}
           >
             Open orders
           </button>
+          {query.orderId ? (
+            <button
+              type="button"
+              onClick={handleOpenOrderDetails}
+              className="inline-flex min-h-[48px] items-center justify-center rounded-2xl border px-5 py-3 text-sm font-semibold"
+              style={{ borderColor: PAGE.border, background: PAGE.cardBg, color: PAGE.textPrimary }}
+            >
+              Open order details
+            </button>
+          ) : null}
         </div>
       </div>
     </div>
