@@ -2,6 +2,7 @@ import { api, getApiErrorMessage } from "./api";
 
 export type AdminDashboardBanner = {
   id: string;
+  audience: "patient" | "pharmacy" | "doctor" | "receptionist" | "admin" | string;
   title: string | null;
   subtitle: string | null;
   imageUrl: string;
@@ -17,6 +18,7 @@ export type AdminDashboardBanner = {
 };
 
 export type DashboardBannerFormValues = {
+  audience: "patient" | "pharmacy" | "doctor" | "receptionist" | "admin";
   title: string;
   subtitle: string;
   targetType: string;
@@ -38,6 +40,7 @@ type BannerListResponse =
 
 const appendBannerForm = (values: DashboardBannerFormValues) => {
   const form = new FormData();
+  form.append("audience", values.audience);
   form.append("title", values.title);
   form.append("subtitle", values.subtitle);
   form.append("targetType", values.targetType);

@@ -10,44 +10,78 @@ import {
 } from "../../services/admin-dashboard-banners.service";
 import { resolveApiAssetUrl } from "../../services/api";
 
+const audienceOptions = [
+  { value: "patient", label: "Patient" },
+  { value: "pharmacy", label: "Pharmacy" },
+  { value: "doctor", label: "Doctor" },
+  { value: "receptionist", label: "Receptionist" },
+] as const;
+
 const targetTypes = [
   { value: "none", label: "None" },
   { value: "medical_center", label: "Medical Center" },
   { value: "pharmacy", label: "Pharmacy" },
   { value: "doctor", label: "Doctor" },
+  { value: "medicine", label: "Medicine" },
+  { value: "inventory", label: "Inventory" },
+  { value: "order", label: "Order" },
+  { value: "external_url", label: "External URL" },
   { value: "prescription_upload", label: "Prescription Upload" },
   { value: "appointments", label: "Appointments" },
 ];
 
-const targetScreens = [
-  { value: "", label: "Use target type default", hint: "Follow the default mobile route for the selected target type." },
-  { value: "Appointments", label: "Appointments", hint: "Open the patient appointments screen." },
-  { value: "UploadPrescription", label: "Upload Prescription", hint: "Open the prescription upload flow." },
-  { value: "PharmacyMarketplace", label: "Pharmacy Marketplace", hint: "Open the pharmacy marketplace list." },
-  { value: "PharmacyStore", label: "Pharmacy Store", hint: "Open a specific pharmacy store. Requires pharmacy target ID." },
-  { value: "DoctorSearchScreen", label: "Doctor Search", hint: "Open doctor search. Doctor ID is optional." },
-  { value: "BookAppointmentScreen", label: "Book Appointment", hint: "Open booking flow. Doctor ID is optional." },
-  { value: "PatientClinicDetails", label: "Clinic Details", hint: "Open a clinic details page. Requires clinic target ID." },
-  { value: "PatientPrescriptions", label: "Patient Prescriptions", hint: "Open the prescriptions list." },
-  { value: "MedicalHistoryScreen", label: "Medical History", hint: "Open the medical history screen." },
-  { value: "MedicineSearch", label: "Medicine Search", hint: "Open medicine search." },
-  { value: "Favorites", label: "Favorites", hint: "Open saved favorites." },
-  { value: "SymptomChecker", label: "Symptom Checker", hint: "Open the symptom checker." },
-  { value: "NotificationCenter", label: "Notifications", hint: "Open the notification center." },
+const targetScreenOptions = {
+  patient: [
+    { value: "PatientDashboard", label: "Patient Dashboard", hint: "Open the patient dashboard carousel." },
+    { value: "DoctorSearchScreen", label: "Doctor Search", hint: "Open doctor search." },
+    { value: "PatientClinicDetails", label: "Medical Centers", hint: "Open a clinic details page." },
+    { value: "PharmacyMarketplace", label: "Pharmacy Marketplace", hint: "Open the pharmacy marketplace list." },
+    { value: "PatientPrescriptions", label: "Prescriptions", hint: "Open patient prescriptions." },
+    { value: "UploadPrescription", label: "Upload Prescription", hint: "Open the upload prescription flow." },
+    { value: "Appointments", label: "Appointments", hint: "Open the patient appointments screen." },
+  ],
+  pharmacy: [
+    { value: "PharmacyDashboard", label: "Pharmacy Dashboard", hint: "Open the pharmacy dashboard banner area." },
+    { value: "PharmacyInventory", label: "Pharmacy Inventory", hint: "Open inventory." },
+    { value: "PharmacyOrders", label: "Pharmacy Orders", hint: "Open order management." },
+    { value: "PharmacyPrescriptions", label: "Pharmacy Prescriptions", hint: "Open prescription tracking." },
+    { value: "PharmacyExpiryTracker", label: "Pharmacy Expiry Tracker", hint: "Open expiry tracker." },
+    { value: "PharmacyForecasting", label: "Pharmacy Forecasting", hint: "Open forecasting." },
+    { value: "PharmacyMarketplace", label: "Pharmacy Marketplace", hint: "Reserved for future marketplace panel targeting." },
+  ],
+  doctor: [{ value: "DoctorDashboard", label: "Doctor Dashboard", hint: "Reserved for future doctor dashboard use." }],
+  receptionist: [{ value: "ReceptionistHome", label: "Receptionist Home", hint: "Reserved for future receptionist banners." }],
+  admin: [{ value: "Dashboard", label: "Admin Dashboard", hint: "Reserved for future admin banners." }],
+} as const;
+
+const audienceFilters = [
+  { value: "all", label: "All" },
+  { value: "patient", label: "Patient" },
+  { value: "pharmacy", label: "Pharmacy" },
+] as const;
+
+const stateFilters = [
+  { value: "all", label: "All states" },
+  { value: "active", label: "Active" },
+  { value: "inactive", label: "Inactive" },
 ] as const;
 
 const emptyForm: DashboardBannerFormValues = {
+  audience: "patient",
   title: "",
   subtitle: "",
   targetType: "none",
   targetId: "",
-  targetScreen: "",
+  targetScreen: "PatientDashboard",
   isActive: true,
   sortOrder: 0,
   startDate: "",
   endDate: "",
   image: null,
 };
+
+const getTargetScreensForAudience = (audience: DashboardBannerFormValues["audience"]) =>
+  targetScreenOptions[audience] ?? targetScreenOptions.patient;
 
 const baseFieldClass =
   "mt-2 w-full rounded-2xl border border-slate-200 bg-[linear-gradient(180deg,#FCFEFF_0%,#F5F9FD_100%)] px-4 py-3 text-sm text-slate-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.95)] outline-none transition focus:border-[#1DB57C] focus:bg-white";
@@ -288,11 +322,23 @@ function BannerDateTimeField({ label, value, onChange }: BannerDateTimeFieldProp
 }
 
 const fromBanner = (banner: AdminDashboardBanner): DashboardBannerFormValues => ({
+  audience:
+    banner.audience === "pharmacy" ||
+    banner.audience === "doctor" ||
+    banner.audience === "receptionist"
+      ? banner.audience
+      : "patient",
   title: banner.title ?? "",
   subtitle: banner.subtitle ?? "",
   targetType: banner.targetType ?? "none",
   targetId: banner.targetId ?? "",
-  targetScreen: banner.targetScreen ?? "",
+  targetScreen: banner.targetScreen ?? getTargetScreensForAudience(
+    banner.audience === "pharmacy" ||
+      banner.audience === "doctor" ||
+      banner.audience === "receptionist"
+      ? banner.audience
+      : "patient"
+  )[0]?.value ?? "PatientDashboard",
   isActive: banner.isActive,
   sortOrder: banner.sortOrder,
   startDate: toDateTimeInput(banner.startDate),
@@ -310,9 +356,34 @@ export default function DashboardBannersPage() {
   const [togglingBannerId, setTogglingBannerId] = useState<string | null>(null);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
+  const [audienceFilter, setAudienceFilter] = useState<(typeof audienceFilters)[number]["value"]>("all");
+  const [stateFilter, setStateFilter] = useState<(typeof stateFilters)[number]["value"]>("all");
 
   const activeCount = useMemo(() => banners.filter((banner) => banner.isActive).length, [banners]);
+  const patientCount = useMemo(
+    () => banners.filter((banner) => (banner.audience || "patient") === "patient").length,
+    [banners]
+  );
+  const pharmacyCount = useMemo(
+    () => banners.filter((banner) => banner.audience === "pharmacy").length,
+    [banners]
+  );
   const getBannerLabel = (banner: AdminDashboardBanner) => banner.title?.trim() || "Untitled dashboard banner";
+  const currentTargetScreens = useMemo(
+    () => getTargetScreensForAudience(form.audience),
+    [form.audience]
+  );
+  const filteredBanners = useMemo(
+    () =>
+      banners.filter((banner) => {
+        const bannerAudience = banner.audience || "patient";
+        if (audienceFilter !== "all" && bannerAudience !== audienceFilter) return false;
+        if (stateFilter === "active" && !banner.isActive) return false;
+        if (stateFilter === "inactive" && banner.isActive) return false;
+        return true;
+      }),
+    [audienceFilter, banners, stateFilter]
+  );
 
   const loadBanners = async () => {
     setLoading(true);
@@ -419,15 +490,14 @@ export default function DashboardBannersPage() {
         <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
           <div className="max-w-3xl">
             <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[#CBF7E8]">
-              Patient Dashboard
+              Multi-panel banners
             </p>
             <h2 className="mt-3 text-3xl font-semibold">Banner carousel management</h2>
             <p className="mt-3 text-sm text-[#E1FBF2]">
-              Publish active promotional banners for appointments, prescriptions, medical centers, and
-              pharmacy services.
+              Publish active promotional banners for patient and pharmacy mobile experiences with audience and screen targeting.
             </p>
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
             <div className="rounded-2xl bg-white/12 p-4 backdrop-blur">
               <p className="text-xs uppercase tracking-wide text-[#E1FBF2]">Banners</p>
               <p className="mt-2 text-2xl font-semibold">{banners.length}</p>
@@ -435,6 +505,14 @@ export default function DashboardBannersPage() {
             <div className="rounded-2xl bg-white/12 p-4 backdrop-blur">
               <p className="text-xs uppercase tracking-wide text-[#E1FBF2]">Active</p>
               <p className="mt-2 text-2xl font-semibold">{activeCount}</p>
+            </div>
+            <div className="rounded-2xl bg-white/12 p-4 backdrop-blur">
+              <p className="text-xs uppercase tracking-wide text-[#E1FBF2]">Patient</p>
+              <p className="mt-2 text-2xl font-semibold">{patientCount}</p>
+            </div>
+            <div className="rounded-2xl bg-white/12 p-4 backdrop-blur">
+              <p className="text-xs uppercase tracking-wide text-[#E1FBF2]">Pharmacy</p>
+              <p className="mt-2 text-2xl font-semibold">{pharmacyCount}</p>
             </div>
           </div>
         </div>
@@ -478,6 +556,29 @@ export default function DashboardBannersPage() {
           </div>
 
           <div className="space-y-4">
+            <label className="block">
+              <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">Audience / Panel</span>
+              <select
+                value={form.audience}
+                onChange={(event) =>
+                  setForm((current) => ({
+                    ...current,
+                    audience: event.target.value as DashboardBannerFormValues["audience"],
+                    targetScreen: getTargetScreensForAudience(
+                      event.target.value as DashboardBannerFormValues["audience"]
+                    )[0]?.value ?? "",
+                  }))
+                }
+                className={baseFieldClass}
+              >
+                {audienceOptions.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+
             <label className="block">
               <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">Title optional</span>
               <input
@@ -584,7 +685,7 @@ export default function DashboardBannersPage() {
                 onChange={(event) => setForm((current) => ({ ...current, targetScreen: event.target.value }))}
                 className={baseFieldClass}
               >
-                {targetScreens.map((option) => (
+                {currentTargetScreens.map((option) => (
                   <option key={option.value || "default"} value={option.value}>
                     {option.label}
                   </option>
@@ -607,7 +708,9 @@ export default function DashboardBannersPage() {
 
             <label className="flex items-center justify-between rounded-[24px] border border-slate-200 bg-[linear-gradient(180deg,#FCFEFF_0%,#F5F9FD_100%)] px-5 py-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.95)]">
               <div className="min-w-0 pr-4">
-                <span className="block text-base font-semibold text-slate-800">Active on patient dashboard</span>
+                <span className="block text-base font-semibold text-slate-800">
+                  Active on {form.audience === "pharmacy" ? "pharmacy panel" : `${form.audience} panel`}
+                </span>
               </div>
               <span
                 className={`relative inline-flex h-7 w-12 items-center rounded-full p-1 transition ${
@@ -643,7 +746,7 @@ export default function DashboardBannersPage() {
           <div className="mb-5 flex items-center justify-between gap-4">
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">Current Banners</p>
-              <h3 className="mt-1 text-xl font-semibold text-[#053F56]">Patient carousel</h3>
+              <h3 className="mt-1 text-xl font-semibold text-[#053F56]">Panel carousel inventory</h3>
             </div>
             <button
               type="button"
@@ -654,22 +757,53 @@ export default function DashboardBannersPage() {
             </button>
           </div>
 
+          <div className="mb-5 grid gap-3 md:grid-cols-2">
+            <label className="block">
+              <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">Audience filter</span>
+              <select
+                value={audienceFilter}
+                onChange={(event) => setAudienceFilter(event.target.value as typeof audienceFilter)}
+                className={baseFieldClass}
+              >
+                {audienceFilters.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="block">
+              <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">State filter</span>
+              <select
+                value={stateFilter}
+                onChange={(event) => setStateFilter(event.target.value as typeof stateFilter)}
+                className={baseFieldClass}
+              >
+                {stateFilters.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+
           {loading ? (
             <div className="grid gap-4">
               {[1, 2, 3].map((item) => (
                 <div key={item} className="h-36 animate-pulse rounded-3xl bg-slate-100" />
               ))}
             </div>
-          ) : banners.length === 0 ? (
+          ) : filteredBanners.length === 0 ? (
             <div className="rounded-3xl border border-dashed border-[#CBF7E8] bg-[#F7FFFB] px-6 py-12 text-center">
-              <p className="text-lg font-semibold text-[#053F56]">No dashboard banners yet</p>
+              <p className="text-lg font-semibold text-[#053F56]">No matching banners yet</p>
               <p className="mt-2 text-sm text-slate-500">
-                Create your first banner to promote appointments, prescriptions, or pharmacy services.
+                Create or adjust filters to manage patient and pharmacy promotional banners.
               </p>
             </div>
           ) : (
             <div className="grid gap-4">
-              {banners.map((banner) => (
+              {filteredBanners.map((banner) => (
                 <article
                   key={banner.id}
                   className={`overflow-hidden rounded-3xl border bg-white ${
@@ -686,6 +820,9 @@ export default function DashboardBannersPage() {
                       <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
                         <div>
                           <div className="flex flex-wrap items-center gap-2">
+                            <span className="rounded-full bg-[#E8F8F0] px-2.5 py-1 text-xs font-semibold text-[#1B9362]">
+                              {(banner.audience || "patient").toUpperCase()}
+                            </span>
                             <span
                               className={`rounded-full px-2.5 py-1 text-xs font-semibold ${
                                 banner.isActive
@@ -741,6 +878,10 @@ export default function DashboardBannersPage() {
                       </div>
 
                       <div className="grid gap-3 text-sm text-slate-500 md:grid-cols-4">
+                        <div>
+                          <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Audience</p>
+                          <p className="mt-1 font-medium text-slate-700">{banner.audience || "patient"}</p>
+                        </div>
                         <div>
                           <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Target</p>
                           <p className="mt-1 font-medium text-slate-700">{banner.targetType ?? "none"}</p>
